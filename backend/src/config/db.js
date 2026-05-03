@@ -6,7 +6,7 @@ const { Pool } = pkg;
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: false, // since you're using Docker/local
+  ssl: false, 
 });
 
 pool.connect()

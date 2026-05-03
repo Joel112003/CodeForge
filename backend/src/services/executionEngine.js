@@ -7,8 +7,8 @@ import { v4 as uuidv4 } from "uuid";
 const docker = new Docker();
 
 const Images = {
-  javascript: 'node:18-alpine',
-  python: 'python:3.11-alpine'
+  javascript: "node:18-alpine",
+  python: "python:3.11-alpine",
 };
 const runCommand = {
   javascript: (file) => ["node", `/code/${file}`],
@@ -20,7 +20,7 @@ const extensions = {
   javascript: "js",
 };
 
-async function executeCode(language, code) {
+async function executeCode(language, code, onChunk) {
   const fileName = `${uuidv4()}.${extensions[language]}`;
   const hostTmpDir = os.tmpdir();
   const filePath = path.join(hostTmpDir, fileName);
@@ -49,36 +49,33 @@ async function executeCode(language, code) {
 
   await container.start();
 
+  const stream = await container.logs({
+    stdout: true,
+    stderr: true,
+    follow: true,
+  });
+
   //kill it after 10sec
   const timeout = setTimeout(async () => {
     try {
       await container.kill();
-    } catch (err) {
-      console.error("Error killing container", err);
-    }
+    } catch {}
+    onChunk("[Execution timed out]", "stderr");
   }, 10000);
 
-  //wait for it to finish it's job
-  const output = await container.wait();
+  container.modem.demuxStream(
+    stream,
+    {
+      write: (chunk) => onChunk(chunk.toString(), "stdout"),
+    },
+    {
+      write: (chunk) => onChunk(chunk.toString(), "stderr"),
+    },
+  );
 
-  clearTimeout(timeout);
-
-  //now get logs(stdout + stderr)
-  const logs = await container
-    .logs({
-      stdout: true,
-      stderr: true,
-    })
-    .catch(() => Buffer.from(""));
-
-  //now cleanup the temp file
+  await new Promise((resolve) => stream.on("end", resolve));
+  clearTimeout(killer);
   fs.unlinkSync(filePath);
-  return {
-    output: logs.toString("utf-8").replace(/[\x00-\x08\x0e-\x1f]/g, ""), // remove ANSI color codes
-    exitCode: output.StatusCode,
-    duration: Date.now() - startTime,
-  };
 }
-
 
 export default executeCode;
