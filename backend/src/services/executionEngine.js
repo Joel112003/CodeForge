@@ -1,16 +1,16 @@
 import Docker from "dockerode";
-import fs, { unlinkSync } from "fs";
+import fs from "fs";
 import path from "path";
 import os from "os";
 import { v4 as uuidv4 } from "uuid";
 
 const docker = new Docker();
 
-const Images = {
+export const Images = {
   javascript: "node:18-alpine",
   python: "python:3.11-alpine",
 };
-const runCommand = {
+export const runCommand = {
   javascript: (file) => ["node", `/code/${file}`],
   python: (file) => ["python", `/code/${file}`],
 };
@@ -26,12 +26,11 @@ async function executeCode(language, code, onChunk) {
   const filePath = path.join(hostTmpDir, fileName);
   fs.writeFileSync(filePath, code);
 
-  const startTime = Date.now();
-
   //create a container
   const container = await docker.createContainer({
     Image: Images[language],
     Cmd: runCommand[language](fileName),
+    Labels: { "created-by": "code-engine" },
     HostConfig: {
       Memory: 50 * 1024 * 1024, // 50MB
       CpuQuota: 50000,
@@ -74,7 +73,7 @@ async function executeCode(language, code, onChunk) {
   );
 
   await new Promise((resolve) => stream.on("end", resolve));
-  clearTimeout(killer);
+  clearTimeout(timeout);
   fs.unlinkSync(filePath);
 }
 

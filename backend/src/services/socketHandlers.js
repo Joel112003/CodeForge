@@ -68,7 +68,7 @@ export default function setupSocket(io) {
       if (callback) callback("QUEUED");
       socket.emit("status", "QUEUED");
 
-      //add to queue instaed of running directly
+      //add to queue instead of running directly
       await executionQueue.add("run", {
         language,
         code,

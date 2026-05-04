@@ -1,4 +1,7 @@
+import validateEnv from "./src/config/env.js";
 import dotenv from "dotenv";
+
+validateEnv();
 dotenv.config();
 
 import express from "express";
@@ -12,6 +15,8 @@ import executeRoutes from "./src/routes/execute.routes.js";
 import roomRoutes from "./src/routes/room.routes.js";
 import errorHandler from "./src/middleware/errorHandler.js";
 import { apiLimiter, executionLimiter } from "./src/middleware/rateLimiter.js";
+import { cleanupOrphanContainers } from "./src/services/containerCleanup.js";
+import socketHandlers from "./src/services/socketHandlers.js";
 
 const app = express();
 const httpServer = createServer(app);
@@ -22,8 +27,6 @@ const io = new Server(httpServer, {
     methods: ["GET", "POST"],
   },
 });
-
-const socketHandlers = await import("./src/services/socketHandlers.js");
 socketHandlers.default(io);
 
 app.use(helmet())                    
@@ -41,8 +44,6 @@ app.get("/health", (req, res) => {
   res.status(200).json({ message: "Server is healthy" });
 });
 
-app.use(express.static("src/../"));
-
 app.use((req, res) => {
   res.status(404).json({ message: "Route not found" });
 });
@@ -53,3 +54,6 @@ const PORT = process.env.PORT || 8080;
 httpServer.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
+
+// Cleanup orphan containers on startup
+await cleanupOrphanContainers().catch(err => console.error("Cleanup error:", err));
