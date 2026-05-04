@@ -27,7 +27,7 @@ const io = new Server(httpServer, {
     methods: ["GET", "POST"],
   },
 });
-socketHandlers.default(io);
+socketHandlers(io);
 
 app.use(helmet())                    
 app.use(cors({
