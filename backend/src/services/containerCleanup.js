@@ -1,17 +1,25 @@
 import Docker from "dockerode";
-import { Images, runCommand } from "./executionEngine.js";
+import { Images } from "./executionEngine.js";
 
 const docker = new Docker();
 
-export async function cleanupOrphanContainers() {
+export async function cleanupOrphanContainers(language) {
   try {
-    const containers = await docker.listContainers({
-      filters: {
-        Image: Images[language],
-        Cmd: runCommand[language](`/code/${filename}`),
-        label: ["created-by=code-forge"],
-      },
-    });
+    const filters = {
+      label: ["created-by=code-engine"],
+    };
+
+    if (language) {
+      if (!Images[language]) {
+        console.warn(
+          `Skipping container cleanup for unknown language: ${language}`,
+        );
+        return;
+      }
+      filters.ancestor = Images[language];
+    }
+
+    const containers = await docker.listContainers({ filters });
     for (const containerInfo of containers) {
       const container = docker.getContainer(containerInfo.Id);
       await container.kill();

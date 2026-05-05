@@ -15,6 +15,20 @@ export const runCommand = {
   python: (file) => ["python", `/code/${file}`],
 };
 
+const LANGUAGE_ALIASES = {
+  js: "javascript",
+  node: "javascript",
+  py: "python",
+};
+
+export const SUPPORTED_LANGUAGES = Object.keys(Images);
+
+export function normalizeLanguage(input) {
+  if (!input || typeof input !== "string") return input;
+  const lower = input.toLowerCase();
+  return LANGUAGE_ALIASES[lower] ?? lower;
+}
+
 const extensions = {
   python: "py",
   javascript: "js",

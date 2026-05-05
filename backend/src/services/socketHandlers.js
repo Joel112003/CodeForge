@@ -1,4 +1,4 @@
-import executeCode from "./executionEngine.js";
+import { normalizeLanguage, SUPPORTED_LANGUAGES } from "./executionEngine.js";
 import executionQueue from "./queue.js";
 import pool from "../config/db.js";
 import {
@@ -64,13 +64,20 @@ export default function setupSocket(io) {
 
     // execution handler
     socket.on("run_code", async ({ language, code, roomId }, callback) => {
+      const normalizedLanguage = normalizeLanguage(language);
+
+      if (!SUPPORTED_LANGUAGES.includes(normalizedLanguage)) {
+        socket.emit("error", "Unsupported language");
+        if (callback) callback("UNSUPPORTED_LANGUAGE");
+        return;
+      }
       //receipt immediately to prevent client timeout
       if (callback) callback("QUEUED");
       socket.emit("status", "QUEUED");
 
       //add to queue instead of running directly
       await executionQueue.add("run", {
-        language,
+        language: normalizedLanguage,
         code,
         socketId: socket.id,
         roomId,
@@ -79,13 +86,19 @@ export default function setupSocket(io) {
 
     // live code sync, when user types the broadcast to everyone else in the room
     socket.on("code_change", async ({ roomId, code, language }, callback) => {
+      const normalizedLanguage = normalizeLanguage(language);
       const targetRoomId = roomId || socket.data.roomId;
+      if (!SUPPORTED_LANGUAGES.includes(normalizedLanguage)) {
+        socket.emit("error", "Unsupported language");
+        if (callback) callback("UNSUPPORTED_LANGUAGE");
+        return;
+      }
       console.log("[code_change] request", {
         socketId: socket.id,
         roomIdFromPayload: roomId,
         roomIdFromSocket: socket.data.roomId,
         targetRoomId,
-        language,
+        language: normalizedLanguage,
         codeLength: typeof code === "string" ? code.length : 0,
       });
 
@@ -97,10 +110,12 @@ export default function setupSocket(io) {
       }
 
       //save to redis so new joiners get latest code
-      await updateRoomCode(targetRoomId, code, language);
+      await updateRoomCode(targetRoomId, code, normalizedLanguage);
 
       // broadcast to everyone else in the room (and emit legacy alias for compatibility)
-      socket.to(targetRoomId).emit("code_updated", { code, language, roomId: targetRoomId });
+      socket
+        .to(targetRoomId)
+        .emit("code_updated", { code, language: normalizedLanguage, roomId: targetRoomId });
       console.log("[code_change] broadcasted", {
         socketId: socket.id,
         targetRoomId,

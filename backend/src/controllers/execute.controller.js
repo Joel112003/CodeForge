@@ -1,10 +1,14 @@
-import executeCode from "../services/executionEngine.js";
+import executeCode, {
+  normalizeLanguage,
+  SUPPORTED_LANGUAGES,
+} from "../services/executionEngine.js";
 import pool from "../config/db.js";
 
 export const execute = async (req, res) => {
   const { language, code } = req.body;
+  const normalizedLanguage = normalizeLanguage(language);
 
-  if (!["javascript", "python"].includes(language)) {
+  if (!SUPPORTED_LANGUAGES.includes(normalizedLanguage)) {
     return res.status(400).json({ message: "Unsupported language" });
   }
 
@@ -13,7 +17,7 @@ export const execute = async (req, res) => {
   }
 
   try {
-    const result = await executeCode(language, code);
+    const result = await executeCode(normalizedLanguage, code);
     // Store execution history in DB
     await pool.query(
       `INSERT INTO executions 
@@ -21,7 +25,7 @@ export const execute = async (req, res) => {
    VALUES ($1, $2, $3, $4, $5, $6)`,
       [
         req.user.userId,
-        language,
+        normalizedLanguage,
         code,
         "COMPLETED",
         result.output,

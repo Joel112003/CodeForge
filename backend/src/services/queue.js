@@ -1,7 +1,7 @@
 import { Queue, Worker } from "bullmq";
 
 import redis from "../config/redis.js";
-import executeCode from "./executionEngine.js";
+import executeCode, { normalizeLanguage } from "./executionEngine.js";
 import { getSocket } from "./socketHandlers.js";
 import pool from "../config/db.js";
 
@@ -14,6 +14,7 @@ const worker = new Worker(
   "execution",
   async (job) => {
     const { language, code, socketId, roomId } = job.data;
+    const normalizedLanguage = normalizeLanguage(language);
     const socket = getSocket(socketId);
 
     // updated execution status in db
@@ -21,14 +22,14 @@ const worker = new Worker(
       `INSERT INTO executions 
       (user_id, language, code, status)
       VALUES ($1, $2, $3, 'RUNNING) RETURNING id`,
-      [job.data.userId, language, code],
+      [job.data.userId, normalizedLanguage, code],
     );
     const executionId = execution.rows[0].id;
     const startTime = Date.now();
 
     try {
       socket?.emit("status", "RUNNING");
-      await executeCode(language, code, (chunk, type) => {
+      await executeCode(normalizedLanguage, code, (chunk, type) => {
         //send to the user who executed the code
         socket?.emit("output", { output: chunk, type });
       });
