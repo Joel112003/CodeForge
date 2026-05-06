@@ -1,20 +1,34 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { motion, AnimatePresence } from 'framer-motion'
 import { registerUser } from '../services/api'
 import useAuthStore from '../store/authStore'
 import Input from '../components/ui/Input'
 import Button from '../components/ui/Button'
-import Spinner from '../components/ui/Spinner'
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: { staggerChildren: 0.1, delayChildren: 0 },
+  },
+}
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 12 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.5 } },
+}
 
 export default function Register() {
-  const [form, setForm]       = useState({ email: '', password: '' })
-  const [error, setError]     = useState('')
+  const [form, setForm] = useState({ email: '', password: '' })
+  const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
-  const { setAuth }           = useAuthStore()
-  const navigate              = useNavigate()
+  const { setAuth } = useAuthStore()
+  const navigate = useNavigate()
 
   function handleChange(e) {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }))
+    if (error) setError('')
   }
 
   async function handleSubmit() {
@@ -34,48 +48,146 @@ export default function Register() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center px-4">
-      <div className="w-full max-w-md bg-[#111] border border-gray-800 rounded-xl p-8">
-        <h1 className="text-white text-2xl font-bold mb-1">
-          Code<span className="text-blue-500">Engine</span>
-        </h1>
-        <p className="text-gray-500 text-sm mb-8">Create your account</p>
+    <div className="min-h-screen bg-base-950 flex">
 
-        {error && (
-          <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-sm rounded-lg p-3 mb-6">
-            {error}
+      {/* ── LEFT: Branding ── */}
+      <motion.div
+        initial={{ opacity: 0, x: -24 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ duration: 0.6 }}
+        className="hidden lg:flex flex-col justify-between w-96 shrink-0 border-r border-warm-700/20 px-12 py-16 bg-warm-900/20"
+      >
+        <div className="relative space-y-12">
+          {/* Logo */}
+          <div className="flex items-center gap-3">
+            <motion.div
+              className="w-10 h-10 bg-accent-700 flex items-center justify-center font-display font-bold text-lg text-base-cream"
+              whileHover={{ scale: 1.05 }}
+            >
+              C
+            </motion.div>
+            <span className="font-display font-semibold text-xl tracking-tight text-warm-100">
+              CodeForge
+            </span>
           </div>
-        )}
 
-        <div className="flex flex-col gap-4">
-          <Input
-            label="Email"
-            name="email"
-            type="email"
-            placeholder="you@example.com"
-            value={form.email}
-            onChange={handleChange}
-          />
-          <Input
-            label="Password"
-            name="password"
-            type="password"
-            placeholder="Min 6 characters"
-            value={form.password}
-            onChange={handleChange}
-            onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
-          />
-
-          <Button onClick={handleSubmit} disabled={loading} className="w-full justify-center mt-2">
-            {loading ? <Spinner /> : 'Create Account'}
-          </Button>
+          {/* Large Display Text */}
+          <div>
+            <h2 className="font-display text-5xl font-bold leading-none tracking-tight text-warm-200 mb-6">
+              Get Started.
+            </h2>
+            <p className="font-body text-warm-400 leading-relaxed max-w-xs">
+              Create your account and start executing code in isolated containers instantly.
+            </p>
+          </div>
         </div>
 
-        <p className="text-gray-600 text-sm text-center mt-6">
-          Already have an account?{' '}
-          <Link to="/login" className="text-blue-400 hover:underline">Sign in</Link>
-        </p>
+        {/* Perks List */}
+        <div className="space-y-4 border-t border-warm-700/30 pt-8">
+          <div className="font-mono text-xs text-warm-600 uppercase tracking-wide mb-4">
+            What's Included
+          </div>
+          {[
+            'Isolated Docker containers',
+            'Real-time collaboration',
+            'Streamed output — zero buffering',
+          ].map((item, i) => (
+            <motion.div
+              key={item}
+              initial={{ opacity: 0, x: -8 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.4 + i * 0.1, duration: 0.4 }}
+              className="flex items-start gap-3"
+            >
+              <div className="mt-1 w-1.5 h-1.5 rounded-full bg-accent-700 shrink-0" />
+              <span className="font-body text-sm text-warm-400 leading-relaxed">{item}</span>
+            </motion.div>
+          ))}
+        </div>
+      </motion.div>
+
+      {/* ── RIGHT: Form ── */}
+      <div className="flex-1 flex flex-col items-center justify-center px-8 py-16">
+        <motion.div
+          variants={containerVariants}
+          initial="hidden"
+          animate="visible"
+          className="w-full max-w-sm space-y-8"
+        >
+          {/* Heading */}
+          <motion.div variants={itemVariants} className="space-y-2">
+            <h1 className="font-display text-3xl font-semibold text-warm-100">Create Account</h1>
+            <p className="font-body text-warm-500">
+              Already registered?{' '}
+              <Link to="/login" className="text-accent-700 hover:text-accent-600 transition-colors">
+                Sign in
+              </Link>
+            </p>
+          </motion.div>
+
+          {/* Form */}
+          <motion.form
+            variants={containerVariants}
+            onSubmit={(e) => { e.preventDefault(); handleSubmit() }}
+            className="space-y-6"
+          >
+            <motion.div variants={itemVariants}>
+              <Input
+                name="email"
+                type="email"
+                label="Email"
+                placeholder="you@example.com"
+                value={form.email}
+                onChange={handleChange}
+                error={error && !form.email ? 'Email required' : ''}
+              />
+            </motion.div>
+
+            <motion.div variants={itemVariants}>
+              <Input
+                name="password"
+                type="password"
+                label="Password"
+                placeholder="••••••••"
+                value={form.password}
+                onChange={handleChange}
+                hint="Minimum 6 characters"
+                error={error && !form.password ? 'Password required' : ''}
+              />
+            </motion.div>
+
+            {/* Error */}
+            <AnimatePresence>
+              {error && (
+                <motion.div
+                  initial={{ opacity: 0, y: -8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  className="p-3 border border-warm-700/50 bg-warm-900/20 rounded-sm"
+                >
+                  <p className="font-mono text-sm text-warm-600">{error}</p>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            <motion.div variants={itemVariants}>
+              <Button
+                type="submit"
+                loading={loading}
+                className="w-full"
+              >
+                {loading ? 'Creating account...' : 'Create Account'}
+              </Button>
+            </motion.div>
+          </motion.form>
+
+          {/* Terms */}
+          <motion.p variants={itemVariants} className="text-center font-mono text-xs text-warm-600">
+            By creating an account, you agree to our Terms of Service
+          </motion.p>
+        </motion.div>
       </div>
     </div>
   )
 }
+ 
