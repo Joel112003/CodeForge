@@ -1,22 +1,24 @@
-// Piston API replaces Docker-based execution.
-// Piston is a free, public sandboxed code execution service — no API key needed.
-// Public instance: https://emkc.org/api/v2/piston
 
-const PISTON_API = "https://emkc.org/api/v2/piston/execute";
+import { spawn } from "child_process";
+import { writeFileSync, unlinkSync } from "fs";
+import { join } from "path";
+import { tmpdir } from "os";
+import { randomUUID } from "crypto";
 
-// Maps language names to Piston runtime identifiers
-const PISTON_RUNTIMES = {
-  javascript: { language: "javascript", version: "*" },
-  python: { language: "python", version: "*" },
+const TIMEOUT_MS = 10000; // 10-second hard limit
+
+const RUNNERS = {
+  javascript: { cmd: "node", ext: "js" },
+  python: { cmd: "python3", ext: "py" },
 };
 
-// Kept for backwards compatibility with containerCleanup.js and validateExecution.js
+// Kept for backwards compatibility
 export const Images = {
   javascript: "node:18-alpine",
   python: "python:3.11-alpine",
 };
 
-export const SUPPORTED_LANGUAGES = Object.keys(PISTON_RUNTIMES);
+export const SUPPORTED_LANGUAGES = Object.keys(RUNNERS);
 
 const LANGUAGE_ALIASES = {
   js: "javascript",
@@ -31,40 +33,42 @@ export function normalizeLanguage(input) {
 }
 
 /**
- * Executes code via the Piston API and streams output via the onChunk callback.
- * Interface is identical to the old Docker-based executeCode so queue.js is unchanged.
- *
- * @param {string} language  - Normalized language name ('javascript' | 'python')
- * @param {string} code      - Source code to execute
- * @param {Function} onChunk - Callback(chunk: string, type: 'stdout' | 'stderr')
+ * Executes code by spawning a child process.
+ * Streams stdout and stderr via the onChunk callback, identical interface to before.
  */
 async function executeCode(language, code, onChunk) {
-  const runtime = PISTON_RUNTIMES[language];
-  if (!runtime) {
-    throw new Error(`Unsupported language: ${language}`);
-  }
+  const runner = RUNNERS[language];
+  if (!runner) throw new Error(`Unsupported language: ${language}`);
 
-  const response = await fetch(PISTON_API, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      language: runtime.language,
-      version: runtime.version,
-      files: [{ name: "main", content: code }],
-    }),
-    signal: AbortSignal.timeout(15000), // 15-second hard timeout
+  const fileName = `${randomUUID()}.${runner.ext}`;
+  const filePath = join(tmpdir(), fileName);
+  writeFileSync(filePath, code, "utf8");
+
+  return new Promise((resolve, reject) => {
+    const proc = spawn(runner.cmd, [filePath], {
+      env: { PATH: process.env.PATH },
+    });
+
+    const timer = setTimeout(() => {
+      proc.kill("SIGKILL");
+      onChunk("\n[Execution timed out after 10 seconds]", "stderr");
+    }, TIMEOUT_MS);
+
+    proc.stdout.on("data", (chunk) => onChunk(chunk.toString(), "stdout"));
+    proc.stderr.on("data", (chunk) => onChunk(chunk.toString(), "stderr"));
+
+    proc.on("close", () => {
+      clearTimeout(timer);
+      try { unlinkSync(filePath); } catch {}
+      resolve();
+    });
+
+    proc.on("error", (err) => {
+      clearTimeout(timer);
+      try { unlinkSync(filePath); } catch {}
+      reject(new Error(`Failed to run ${runner.cmd}: ${err.message}`));
+    });
   });
-
-  if (!response.ok) {
-    const body = await response.text();
-    throw new Error(`Piston API error ${response.status}: ${body}`);
-  }
-
-  const result = await response.json();
-  const { stdout, stderr } = result.run ?? {};
-
-  if (stdout) onChunk(stdout, "stdout");
-  if (stderr) onChunk(stderr, "stderr");
 }
 
 export default executeCode;
