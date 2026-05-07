@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { motion, useScroll, useTransform } from "framer-motion";
 import Navbar from "../components/layout/Navbar";
 import Button from "../components/ui/Button";
+import NoiseBackground from "../components/ui/NoiseBackground";
 
 const FONTS = `
   @import url('https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,300;0,400;0,600;0,700;1,300;1,400;1,600&family=DM+Mono:wght@300;400;500&display=swap');
@@ -25,20 +26,17 @@ const FEATURES = [
   {
     index: "01",
     title: "Isolated Execution",
-    desc:
-      "Every run gets its own Docker container. No interference, no data leaks. Hermetic by design.",
+    desc: "Every run gets its own Docker container. No interference, no data leaks. Hermetic by design.",
   },
   {
     index: "02",
     title: "Live Streaming",
-    desc:
-      "Output streams line by line in real time. Not buffered, not batched. Sub-50ms cold start.",
+    desc: "Output streams line by line in real time. Not buffered, not batched. Sub-50ms cold start.",
   },
   {
     index: "03",
     title: "Collaboration",
-    desc:
-      "Share a room link. Code together, run together, see the same output — fully synchronized.",
+    desc: "Share a room link. Code together, run together, see the same output — fully synchronized.",
   },
 ];
 
@@ -48,7 +46,88 @@ const STATS = [
   { value: "2.4M", label: "Sessions Run" },
 ];
 
-const LOGOS = ["Versa", "Kano", "Pillar", "Meridian", "Trove"];
+/* ── Glowing star for marquee ──────────────────────────────────────────────── */
+function GlowingStar({ size = 16, delay = 0 }) {
+  return (
+    <motion.svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      animate={{
+        opacity: [0.4, 1, 0.4],
+        scale: [0.9, 1.1, 0.9],
+        filter: [
+          'drop-shadow(0 0 3px rgba(192,74,26,0.3))',
+          'drop-shadow(0 0 8px rgba(192,74,26,0.6))',
+          'drop-shadow(0 0 3px rgba(192,74,26,0.3))',
+        ],
+      }}
+      transition={{ duration: 2.5, repeat: Infinity, delay, ease: 'easeInOut' }}
+      style={{ flexShrink: 0 }}
+    >
+      <path
+        d="M12 2L14.09 8.26L20.18 8.64L15.64 12.74L17.09 19.02L12 15.77L6.91 19.02L8.36 12.74L3.82 8.64L9.91 8.26L12 2Z"
+        fill="#C04A1A"
+        fillOpacity="0.9"
+      />
+      <path
+        d="M12 2L14.09 8.26L20.18 8.64L15.64 12.74L17.09 19.02L12 15.77L6.91 19.02L8.36 12.74L3.82 8.64L9.91 8.26L12 2Z"
+        fill="url(#starGlow)"
+        fillOpacity="0.5"
+      />
+      <defs>
+        <radialGradient id="starGlow" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stopColor="#FFB088" />
+          <stop offset="100%" stopColor="#C04A1A" stopOpacity="0" />
+        </radialGradient>
+      </defs>
+    </motion.svg>
+  );
+}
+
+const MARQUEE_ITEMS = [
+  "Isolated Docker Containers",
+  "Real-time Collaboration",
+  "Live Output Streaming",
+  "Secure Sandboxed Execution",
+  "Multi-Language Support",
+  "BullMQ Job Queue",
+  "WebSocket Sync",
+  "Execution History",
+];
+
+function MarqueeStrip({ direction = 'left' }) {
+  const items = [...MARQUEE_ITEMS, ...MARQUEE_ITEMS];
+  return (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 32,
+        animation: `cf-marquee-${direction} 45s linear infinite`,
+        whiteSpace: 'nowrap',
+      }}
+    >
+      {items.map((text, i) => (
+        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 16, flexShrink: 0 }}>
+          <GlowingStar size={14} delay={i * 0.3} />
+          <span
+            style={{
+              fontFamily: "'DM Mono', monospace",
+              fontSize: 11,
+              letterSpacing: '0.08em',
+              textTransform: 'uppercase',
+              color: '#7A6E5A',
+            }}
+          >
+            {text}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 export default function Landing() {
   const navigate = useNavigate();
@@ -59,16 +138,14 @@ export default function Landing() {
 
   return (
     <>
-      <style>{FONTS}</style>
+      <style>{FONTS}{`
+        @keyframes cf-marquee-left {
+          0% { transform: translateX(0); }
+          100% { transform: translateX(-50%); }
+        }
+      `}</style>
 
-      <div
-        aria-hidden
-        className="pointer-events-none fixed inset-0 z-0 bg-size-[128px_128px] bg-repeat"
-        style={{
-          backgroundImage:
-            "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.035'/%3E%3C/svg%3E\")",
-        }}
-      />
+      <NoiseBackground />
 
       <div className="relative flex min-h-screen flex-col overflow-x-hidden bg-[#F8F4ED] font-['DM_Mono']">
         <Navbar variant="public" />
@@ -81,7 +158,6 @@ export default function Landing() {
           className="relative z-10 grid min-h-[90vh] grid-cols-1 gap-0 px-8 py-20 lg:grid-cols-12 lg:px-16 lg:py-0"
         >
           <div className="pointer-events-none absolute left-16 top-0 hidden h-full w-px bg-[linear-gradient(to_bottom,transparent,#E0D8CA_20%,#E0D8CA_80%,transparent)] lg:block" />
-
           <div className="pointer-events-none absolute right-[15%] top-[10%] h-90 w-120 bg-[radial-gradient(ellipse,rgba(192,74,26,0.07)_0%,transparent_70%)] blur-2xl" />
 
           {/* ── LEFT ── */}
@@ -277,24 +353,28 @@ export default function Landing() {
           </div>
         </motion.section>
 
-        {/* ═══════════════════════ LOGO STRIP ══ */}
+        {/* ═══════════════════════ INFINITE MARQUEE ══ */}
         <div
-          id="logos"
-          className="relative z-10 flex items-center gap-0 overflow-hidden border-y border-[#E0D8CA] bg-[#FAF7F0] px-16 py-5"
+          style={{
+            position: 'relative',
+            zIndex: 10,
+            overflow: 'hidden',
+            borderTop: '1px solid #E0D8CA',
+            borderBottom: '1px solid #E0D8CA',
+            background: '#FAF7F0',
+            padding: '18px 0',
+          }}
         >
-          <span className="mr-10 shrink-0 text-[9px] uppercase tracking-[0.16em] text-[#C4B8A4]">
-            Trusted by teams at
-          </span>
-          <div className="flex flex-1 items-center gap-12">
-            {LOGOS.map((name) => (
-              <span
-                key={name}
-                className="shrink-0 font-['Spectral'] text-[1rem] font-semibold tracking-[-0.01em] text-[#D4C9B0]"
-              >
-                {name}
-              </span>
-            ))}
-          </div>
+          {/* Fade edges */}
+          <div style={{
+            position: 'absolute', left: 0, top: 0, bottom: 0, width: 80, zIndex: 2,
+            background: 'linear-gradient(90deg, #FAF7F0, transparent)',
+          }} />
+          <div style={{
+            position: 'absolute', right: 0, top: 0, bottom: 0, width: 80, zIndex: 2,
+            background: 'linear-gradient(270deg, #FAF7F0, transparent)',
+          }} />
+          <MarqueeStrip direction="left" />
         </div>
 
         {/* ═══════════════════════ FEATURES ══ */}
@@ -366,10 +446,6 @@ export default function Landing() {
           </div>
         </section>
 
-        <div id="docs" className="h-0" />
-        <div id="pricing" className="h-0" />
-        <div id="blog" className="h-0" />
-
         {/* ═══════════════════════ FOOTER ══ */}
         <footer
           id="footer"
@@ -388,7 +464,7 @@ export default function Landing() {
             </div>
 
             <div className="flex gap-7">
-              {["Docs", "GitHub", "Status", "Contact"].map((label) => (
+              {["Terms & Conditions", "Privacy Policy"].map((label) => (
                 <button
                   key={label}
                   type="button"

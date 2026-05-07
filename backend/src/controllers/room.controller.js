@@ -13,7 +13,7 @@ export const createRoomHandler = async (req, res, next) => {
 //get room details
 export const getRoomHandler = async (req, res, next) => {
   try {
-    const room = await getRoom(req.params.roomID);
+    const room = await getRoom(req.params.roomId);
     if (!room) return res.status(404).json({ error: "Room not found" });
     res.json(room);
   } catch (err) {

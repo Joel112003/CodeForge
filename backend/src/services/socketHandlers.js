@@ -9,25 +9,13 @@ import {
   updateRoomCode,
 } from "./roomManager.js";
 
-const socketMap = new Map();
-
-// Export so queue worker can access sockets
-export function getSocket(socketId) {
-  return socketMap.get(socketId);
-}
-
 export default function setupSocket(io) {
   io.on("connection", (socket) => {
     console.log("New client connected: " + socket.id);
-    socketMap.set(socket.id, socket);
 
     // rooms
-    socket.on("join_room", async ({ roomId, userId }, callback) => {
-      console.log("[join_room] request", {
-        socketId: socket.id,
-        roomId,
-        userId,
-      });
+    socket.on("join_room", async ({ roomId, userId, displayName }, callback) => {
+      console.log("[join_room] request", { socketId: socket.id, roomId, userId });
 
       const room = await getRoom(roomId);
       if (!room) {
@@ -39,31 +27,29 @@ export default function setupSocket(io) {
 
       const normalizedRoomId = room.id || roomId;
 
-      // join socket room and persist membership state
+      // Store UUID for DB writes, email for display
       socket.join(normalizedRoomId);
-      socket.data.roomId = normalizedRoomId;
-      socket.data.userId = userId;
+      socket.data.roomId       = normalizedRoomId;
+      socket.data.userId       = userId;        // UUID — used for executions table
+      socket.data.displayName  = displayName || userId;  // email — shown in member list
 
-      await addMember(normalizedRoomId, userId);
+      // Store the displayName (email) in the member set so the UI shows readable names
+      await addMember(normalizedRoomId, socket.data.displayName);
       const members = await getMembers(normalizedRoomId);
 
       console.log("[join_room] success", {
         socketId: socket.id,
-        requestedRoomId: roomId,
         normalizedRoomId,
         membersCount: members.length,
       });
 
-      // match test client event name
       socket.emit("room_joined", { room, roomId: normalizedRoomId, members });
-
-      // tell everyone else someone joined
-      socket.to(normalizedRoomId).emit("member_joined", { userId, members });
+      socket.to(normalizedRoomId).emit("member_joined", { userId: socket.data.displayName, members });
       if (callback) callback("JOINED");
     });
 
     // execution handler
-    socket.on("run_code", async ({ language, code, roomId, userId }, callback) => {
+    socket.on("run_code", async ({ language, code, roomId }, callback) => {
       const normalizedLanguage = normalizeLanguage(language);
 
       if (!SUPPORTED_LANGUAGES.includes(normalizedLanguage)) {
@@ -71,21 +57,17 @@ export default function setupSocket(io) {
         if (callback) callback("UNSUPPORTED_LANGUAGE");
         return;
       }
-      //receipt immediately to prevent client timeout
+
       if (callback) callback("QUEUED");
       socket.emit("status", "QUEUED");
 
-      if (userId) {
-        socket.data.userId = userId;
-      }
-
-      //add to queue instead of running directly
+      // Always use socket.data.userId (set at join_room) — never trust client-supplied userId
       await executionQueue.add("run", {
         language: normalizedLanguage,
         code,
         socketId: socket.id,
-        roomId,
-        userId: socket.data.userId,
+        roomId: roomId || socket.data.roomId,
+        userId: socket.data.userId,   // UUID from auth, safe for DB
       });
     });
 
@@ -131,14 +113,14 @@ export default function setupSocket(io) {
 
     //disconnect handler
     socket.on("disconnect", async () => {
-      socketMap.delete(socket.id);
-      const { roomId, userId } = socket.data;
+      const { roomId, userId, displayName } = socket.data;
       if (roomId && userId) {
-        await removeMember(roomId, userId);
+        // displayName (email) was stored in the Redis member set — must remove that key
+        await removeMember(roomId, displayName || userId);
         const members = await getMembers(roomId);
 
-        // tell room members some one has left
-        io.to(roomId).emit("member_left", { userId, members });
+        // Broadcast updated list so all clients re-render MemberList
+        io.to(roomId).emit("member_left", { userId: displayName || userId, members });
       }
 
       console.log("Client disconnected: " + socket.id);

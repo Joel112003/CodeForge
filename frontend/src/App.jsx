@@ -9,6 +9,7 @@ import Register  from './pages/Register'
 import Dashboard from './pages/Dashboard'
 import Editor    from './pages/Editor'
 import History   from './pages/History'
+import Playground from './pages/Playground'
 import { getMe } from './services/api'
 import useAuthStore from './store/authStore'
 
@@ -44,6 +45,7 @@ export default function App() {
         <Route path="/"          element={<Landing />} />
         <Route path="/login"     element={<Login />} />
         <Route path="/register"  element={<Register />} />
+        <Route path="/playground"  element={<Playground />} />
         <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
         <Route path="/editor/:roomId?" element={<ProtectedRoute><Editor /></ProtectedRoute>} />
         <Route path="/history"   element={<ProtectedRoute><History /></ProtectedRoute>} />

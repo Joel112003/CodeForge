@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Mail, Lock, Eye, EyeOff, ArrowRight, AlertCircle } from 'lucide-react'
-import { Skeleton } from 'boneyard-js/react'
 import { registerUser } from '../services/api'
 import useAuthStore from '../store/authStore'
 import { showAuthSuccessToast, showAuthErrorToast } from '../utils/toastMessages'
@@ -98,112 +97,111 @@ export default function Register() {
 
         {/* ── RIGHT: FORM ── */}
         <div className="relative z-10 flex flex-1 items-center justify-center px-6 py-12">
-          <Skeleton name="register-form" loading={false}>
-            <motion.div
-              variants={stagger}
-              initial="hidden"
-              animate="show"
-              className="w-full max-w-95"
-            >
-              {/* Tag */}
-              <motion.div variants={rise} className="mb-10">
-                <span className="inline-flex items-center gap-2 font-['DM_Mono'] text-[10px] uppercase tracking-[0.14em] text-[#C04A1A]">
-                  <span className="inline-block h-px w-5 align-middle bg-[#C04A1A]" />
-                  New account
-                </span>
-              </motion.div>
-
-              {/* Heading */}
-              <motion.div variants={rise} className="mb-9">
-                <h2 className="font-['Spectral'] text-[2.8rem] font-light leading-[1.05] text-[#1A1208]">
-                  Create your<br />
-                  <span className="font-bold italic">account.</span>
-                </h2>
-                <p className="font-['DM_Mono'] text-[12px] tracking-[0.03em] text-[#A0917E]">
-                  Already have one?{' '}
-                  <Link to="/login" className="text-[#C04A1A] underline underline-offset-[3px]">
-                    Sign in →
-                  </Link>
-                </p>
-              </motion.div>
-
-              {/* Fields */}
-              <motion.div variants={rise} className="mb-6 flex flex-col gap-4">
-                <Input
-                  name="email"
-                  type="email"
-                  label="Email address"
-                  placeholder="you@example.com"
-                  value={form.email}
-                  onChange={handleChange}
-                  leftIcon={<Mail size={14} />}
-                  error={error && !form.email ? 'Required' : ''}
-                />
-
-                <div>
-                  <Input
-                    name="password"
-                    type={showPw ? 'text' : 'password'}
-                    label="Password"
-                    placeholder="Min. 6 characters"
-                    value={form.password}
-                    onChange={handleChange}
-                    leftIcon={<Lock size={14} />}
-                    rightIcon={
-                      <button
-                        type="button"
-                        onClick={() => setShowPw(p => !p)}
-                        className="flex cursor-pointer border-0 bg-transparent p-0 text-[#B0A090]"
-                        aria-label={showPw ? 'Hide password' : 'Show password'}
-                      >
-                        {showPw ? <EyeOff size={14} /> : <Eye size={14} />}
-                      </button>
-                    }
-                    error={error && !form.password ? 'Required' : ''}
-                  />
-                  <PasswordStrength password={form.password} />
-                </div>
-              </motion.div>
-
-              {/* Error */}
-              <AnimatePresence>
-                {error && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -6, height: 0 }}
-                    animate={{ opacity: 1, y: 0, height: 'auto' }}
-                    exit={{ opacity: 0, height: 0 }}
-                    transition={{ duration: 0.2 }}
-                    className="mb-4 flex items-start gap-2 border border-[#FCA5A5] border-l-[3px] border-l-[#DC2626] bg-[#FEF2F2] px-3.5 py-3"
-                  >
-                    <AlertCircle size={13} className="shrink-0 text-[#DC2626]" />
-                    <p className="font-['DM_Mono'] text-[12px] text-[#B91C1C]">{error}</p>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-
-              {/* Submit */}
-              <motion.div variants={rise}>
-                <Button
-                  onClick={handleSubmit}
-                  loading={loading}
-                  size="lg"
-                  className="w-full"
-                  iconRight={!loading && <ArrowRight size={14} />}
-                >
-                  {loading ? 'Creating account' : 'Create account'}
-                </Button>
-              </motion.div>
-
-              <motion.div variants={rise} className="mt-8 border-t border-[#E8E0D0] pt-6">
-                <p className="text-center font-['DM_Mono'] text-[10px] leading-[1.8] tracking-[0.04em] text-[#C4B8A4]">
-                  By creating an account you agree to our{' '}
-                  <span className="cursor-pointer underline text-[#A0917E]">Terms</span>
-                  {' '}and{' '}
-                  <span className="cursor-pointer underline text-[#A0917E]">Privacy Policy</span>
-                </p>
-              </motion.div>
+          <motion.div
+            variants={stagger}
+            initial="hidden"
+            animate="show"
+            className="w-full max-w-95"
+          >
+            {/* Tag */}
+            <motion.div variants={rise} className="mb-10">
+              <span className="inline-flex items-center gap-2 font-['DM_Mono'] text-[10px] uppercase tracking-[0.14em] text-[#C04A1A]">
+                <span className="inline-block h-px w-5 align-middle bg-[#C04A1A]" />
+                New account
+              </span>
             </motion.div>
-          </Skeleton>
+
+            {/* Heading */}
+            <motion.div variants={rise} className="mb-9">
+              <h2 className="font-['Spectral'] text-[2.8rem] font-light leading-[1.05] text-[#1A1208]">
+                Create your<br />
+                <span className="font-bold italic">account.</span>
+              </h2>
+              <p className="font-['DM_Mono'] text-[12px] tracking-[0.03em] text-[#A0917E]">
+                Already have one?{' '}
+                <Link to="/login" className="text-[#C04A1A] underline underline-offset-[3px]">
+                  Sign in →
+                </Link>
+              </p>
+            </motion.div>
+
+            {/* Fields */}
+            <motion.div variants={rise} className="mb-6 flex flex-col gap-4">
+              <Input
+                name="email"
+                type="email"
+                label="Email address"
+                placeholder="you@example.com"
+                value={form.email}
+                onChange={handleChange}
+                leftIcon={<Mail size={14} />}
+                error={error && !form.email ? 'Required' : ''}
+              />
+
+              <div>
+                <Input
+                  name="password"
+                  type={showPw ? 'text' : 'password'}
+                  label="Password"
+                  placeholder="Min. 6 characters"
+                  value={form.password}
+                  onChange={handleChange}
+                  leftIcon={<Lock size={14} />}
+                  rightIcon={
+                    <button
+                      type="button"
+                      onClick={() => setShowPw(p => !p)}
+                      className="flex cursor-pointer border-0 bg-transparent p-0 text-[#B0A090]"
+                      aria-label={showPw ? 'Hide password' : 'Show password'}
+                    >
+                      {showPw ? <EyeOff size={14} /> : <Eye size={14} />}
+                    </button>
+                  }
+                  error={error && !form.password ? 'Required' : ''}
+                />
+                <PasswordStrength password={form.password} />
+              </div>
+            </motion.div>
+
+            {/* Error */}
+            <AnimatePresence>
+              {error && (
+                <motion.div
+                  initial={{ opacity: 0, y: -6, height: 0 }}
+                  animate={{ opacity: 1, y: 0, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="mb-4 flex items-start gap-2 border border-[#FCA5A5] border-l-[3px] border-l-[#DC2626] bg-[#FEF2F2] px-3.5 py-3"
+                >
+                  <AlertCircle size={13} className="shrink-0 text-[#DC2626]" />
+                  <p className="font-['DM_Mono'] text-[12px] text-[#B91C1C]">{error}</p>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Submit */}
+            <motion.div variants={rise}>
+              <Button
+                onClick={handleSubmit}
+                loading={loading}
+                size="lg"
+                className="w-full"
+                iconRight={!loading && <ArrowRight size={14} />}
+              >
+                {loading ? 'Creating account' : 'Create account'}
+              </Button>
+            </motion.div>
+
+            <motion.div variants={rise} className="mt-8 border-t border-[#E8E0D0] pt-6">
+              <p className="text-center font-['DM_Mono'] text-[10px] leading-[1.8] tracking-[0.04em] text-[#C4B8A4]">
+                By creating an account you agree to our{' '}
+                <span className="cursor-pointer underline text-[#A0917E]">Terms</span>
+                {' '}and{' '}
+                <span className="cursor-pointer underline text-[#A0917E]">Privacy Policy</span>
+              </p>
+            </motion.div>
+          </motion.div>
+
         </div>
       </div>
     </>

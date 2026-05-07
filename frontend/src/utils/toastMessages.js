@@ -14,20 +14,24 @@ const STATUS_MESSAGES = {
   500: "Server error. Please try again later.",
 };
 
-export function showToast(message, variant = "info") {
-  useToastStore.getState().addToast(message, variant);
+export function showToast(message, variant = "info", title = "") {
+  useToastStore.getState().addToast(message, variant, title)
 }
 
 export function showAuthSuccessToast(action) {
-  const message = AUTH_SUCCESS[action] || "Success";
-  showToast(message, "success");
+  const message = AUTH_SUCCESS[action] || "Success"
+  showToast(message, "success", "Auth")
 }
 
 export function showAuthErrorToast(error, fallback = "Something went wrong") {
-  const status = error?.response?.status;
+  const status = error?.response?.status
   const message =
     error?.response?.data?.message ||
     (status ? STATUS_MESSAGES[status] : null) ||
-    fallback;
-  showToast(message, "error");
+    fallback
+  showToast(message, "error", status ? `Error ${status}` : "Error")
+}
+
+export function showErrorToast(message = "Something went wrong", title = "Error") {
+  showToast(message, "error", title)
 }

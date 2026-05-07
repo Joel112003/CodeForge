@@ -11,8 +11,25 @@ export default function useSocket({
   onMemberLeft,
   onCodeUpdated,
 } = {}) {
-  const socketRef = useRef(null)
+  const socketRef  = useRef(null)
   const [connected, setConnected] = useState(false)
+
+  // Keep refs to the latest callbacks so socket listeners never go stale
+  const onOutputRef      = useRef(onOutput)
+  const onStatusRef      = useRef(onStatus)
+  const onRoomJoinedRef  = useRef(onRoomJoined)
+  const onMemberJoinedRef = useRef(onMemberJoined)
+  const onMemberLeftRef  = useRef(onMemberLeft)
+  const onCodeUpdatedRef = useRef(onCodeUpdated)
+
+  // Sync refs on every render so handlers always call the latest version
+  useEffect(() => { onOutputRef.current      = onOutput      })
+  useEffect(() => { onStatusRef.current      = onStatus      })
+  useEffect(() => { onRoomJoinedRef.current  = onRoomJoined  })
+  useEffect(() => { onMemberJoinedRef.current = onMemberJoined })
+  useEffect(() => { onMemberLeftRef.current  = onMemberLeft  })
+  useEffect(() => { onCodeUpdatedRef.current = onCodeUpdated })
+
   useEffect(() => {
     const socket = io(API_URL, {
       transports: ['polling', 'websocket'],
@@ -23,24 +40,26 @@ export default function useSocket({
 
     socket.on('connect',       () => setConnected(true))
     socket.on('disconnect',    () => setConnected(false))
-    socket.on('connect_error', (err) => console.error('Socket error:', err.message))
-    socket.on('output',        (data) => onOutput?.(data))
-    socket.on('status',        (s)    => onStatus?.(s))
-    socket.on('room_joined',   (data) => onRoomJoined?.(data))
-    socket.on('member_joined', (data) => onMemberJoined?.(data))
-    socket.on('member_left',   (data) => onMemberLeft?.(data))
-    socket.on('code_updated',  (data) => onCodeUpdated?.(data))
+    socket.on('connect_error', (err) => console.error('[socket] error:', err.message))
+
+    // Each listener delegates to the latest ref — no stale closures
+    socket.on('output',        (data) => onOutputRef.current?.(data))
+    socket.on('status',        (s)    => onStatusRef.current?.(s))
+    socket.on('room_joined',   (data) => onRoomJoinedRef.current?.(data))
+    socket.on('member_joined', (data) => onMemberJoinedRef.current?.(data))
+    socket.on('member_left',   (data) => onMemberLeftRef.current?.(data))
+    socket.on('code_updated',  (data) => onCodeUpdatedRef.current?.(data))
 
     socketRef.current = socket
     return () => socket.disconnect()
-  }, [])
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const runCode = useCallback((language, code, roomId) => {
     socketRef.current?.emit('run_code', { language, code, roomId })
   }, [])
 
-  const joinRoom = useCallback((roomId, userId) => {
-    socketRef.current?.emit('join_room', { roomId, userId })
+  const joinRoom = useCallback((roomId, userId, displayName) => {
+    socketRef.current?.emit('join_room', { roomId, userId, displayName })
   }, [])
 
   const sendCodeChange = useCallback((roomId, code, language) => {

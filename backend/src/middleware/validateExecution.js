@@ -1,10 +1,12 @@
-const SUPPORTED_LANGUAGES = ["python", "javascript"];
-const MAX_CODE_LENGTH = 1000;
+import { normalizeLanguage, SUPPORTED_LANGUAGES } from "../services/executionEngine.js";
+
+const MAX_CODE_LENGTH = 10000;
 
 export default function validateExecution(req, res, next) {
   const { language, code } = req.body;
+  const normalizedLanguage = normalizeLanguage(language);
 
-  if (!language || !SUPPORTED_LANGUAGES.includes(language)) {
+  if (!normalizedLanguage || !SUPPORTED_LANGUAGES.includes(normalizedLanguage)) {
     return res
       .status(400)
       .json({
@@ -20,5 +22,6 @@ export default function validateExecution(req, res, next) {
       });
   }
 
+  req.body.language = normalizedLanguage;
   return next();
 }

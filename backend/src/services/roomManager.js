@@ -48,8 +48,8 @@ export async function removeMember(roomId, userId) {
 export default {
   createRoom,
   getRoom,
-    updateRoomCode,
-    addMember,
-    getMembers,
-    removeMember,
+  updateRoomCode,
+  addMember,
+  getMembers,
+  removeMember,
 };

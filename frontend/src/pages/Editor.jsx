@@ -9,48 +9,51 @@ import LanguageSelector from '../components/editor/LanguageSelector'
 import Terminal from '../components/terminal/Terminal'
 import MemberList from '../components/room/MemberList'
 import Badge from '../components/ui/Badge'
-import Button from '../components/ui/Button'
+import NoiseBackground from '../components/ui/NoiseBackground'
+import EditorTopbar, { RunButton, TopbarOutlineBtn, ConnectionBadge } from '../components/layout/EditorTopbar'
+
+const T = {
+  parchment: '#F8F4ED',
+  deep:      '#F5F0E8',
+  muted:     '#7A6E5A',
+  rule:      '#E0D8CA',
+  accent:    '#C04A1A',
+}
+
+function normalizeOutput(payload) {
+  if (typeof payload === 'string') return { type: 'stdout', data: payload }
+  if (payload?.data)    return payload
+  if (payload?.output)  return { type: payload.type || 'stdout', data: payload.output }
+  if (payload?.message) return { type: payload.type || 'stdout', data: payload.message }
+  return { type: 'stdout', data: String(payload ?? '') }
+}
 
 export default function Editor() {
-  const { roomId }                      = useParams()
-  const { user }                        = useAuthStore()
-  const [language, setLanguage]         = useState('javascript')
-  const [code, setCode]                 = useState(DEFAULT_CODE.javascript)
-  const [outputLines, setOutputLines]   = useState([])
-  const [status, setStatus]             = useState('IDLE')
-  const [members, setMembers]           = useState([])
-  const [connected, setConnected]       = useState(false)
-  const isRemoteUpdate                  = useRef(false)
+  const { roomId }                    = useParams()
+  const { user }                      = useAuthStore()
+  const [language,    setLanguage]    = useState('javascript')
+  const [code,        setCode]        = useState(DEFAULT_CODE.javascript)
+  const [outputLines, setOutputLines] = useState([])
+  const [status,      setStatus]      = useState('IDLE')
+  const [members,     setMembers]     = useState([])
+  const [connected,   setConnected]   = useState(false)
+  const isRemoteUpdate = useRef(false)
 
-  function normalizeOutput(payload) {
-    if (typeof payload === 'string') return { type: 'stdout', data: payload }
-    if (payload?.data) return payload
-    if (payload?.output) return { type: payload.type || 'stdout', data: payload.output }
-    if (payload?.message) return { type: payload.type || 'stdout', data: payload.message }
-    return { type: 'stdout', data: String(payload ?? '') }
-  }
-
-  // Socket setup — all events handled here, nothing duplicated
   const { runCode, joinRoom, sendCodeChange } = useSocket({
     onOutput: (data) => {
       const normalized = normalizeOutput(data)
       if (normalized.data) setOutputLines((prev) => [...prev, normalized])
     },
-
-    onStatus: (s) => setStatus(s),
-
-    onRoomJoined: ({ room, members }) => {
+    onStatus:      (s) => setStatus(s),
+    onRoomJoined:  ({ room, members }) => {
       setMembers(members)
       setCode(room.code || DEFAULT_CODE[room.language] || DEFAULT_CODE.javascript)
       setLanguage(room.language || 'javascript')
       setConnected(true)
     },
-
     onMemberJoined: ({ members }) => setMembers(members),
-
-    onMemberLeft: ({ members }) => setMembers(members),
-
-    onCodeUpdated: ({ code, language }) => {
+    onMemberLeft:   ({ members }) => setMembers(members),
+    onCodeUpdated:  ({ code, language }) => {
       isRemoteUpdate.current = true
       setCode(code)
       setLanguage(language)
@@ -58,19 +61,15 @@ export default function Editor() {
     },
   })
 
-  // Join room on mount
   useEffect(() => {
     if (!roomId || !user) return
-    setTimeout(() => {
-      joinRoom(roomId, user.email || user.id)
-    }, 500) // small delay to ensure socket is connected
+    // userId must be the UUID for DB use; email is used for display in the member list
+    setTimeout(() => joinRoom(roomId, user.id, user.email), 500)
   }, [roomId, user, joinRoom])
 
   function handleCodeChange(val) {
     setCode(val)
-    if (!isRemoteUpdate.current && roomId) {
-      sendCodeChange(roomId, val, language)
-    }
+    if (!isRemoteUpdate.current && roomId) sendCodeChange(roomId, val, language)
   }
 
   function handleLanguageChange(lang) {
@@ -85,67 +84,68 @@ export default function Editor() {
   }
 
   return (
-    <div className="h-screen bg-[#0a0a0a] flex flex-col overflow-hidden">
-      {/* Topbar */}
-      <div className="flex items-center justify-between px-5 py-3 border-b border-gray-800 shrink-0">
-        <div className="flex items-center gap-4">
-          <span className="text-white font-bold text-sm">
-            Code<span className="text-blue-500">Engine</span>
-          </span>
-          <LanguageSelector value={language} onChange={handleLanguageChange} />
-          <Badge status={status} />
-        </div>
+    <div
+      className="h-screen flex flex-col overflow-hidden"
+      style={{ background: T.parchment, fontFamily: "'DM Mono', monospace" }}
+    >
+      <NoiseBackground />
 
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1.5">
-            <div className={`w-2 h-2 rounded-full ${connected ? 'bg-green-400' : 'bg-red-400'}`} />
-            <span className="text-gray-500 text-xs">{connected ? 'Connected' : 'Connecting...'}</span>
-          </div>
+      {/* ── TOPBAR ─────────────────────────────────────────────────────────── */}
+      <EditorTopbar
+        left={
+          <>
+            <LanguageSelector value={language} onChange={handleLanguageChange} />
+            <Badge status={status} />
+            {/* room id pill */}
+            {roomId && (
+              <span style={{
+                fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase',
+                color: T.muted, border: `1px solid ${T.rule}`,
+                background: T.deep, padding: '3px 8px',
+              }}>
+                {roomId.slice(0, 8)}…
+              </span>
+            )}
+          </>
+        }
+        right={
+          <>
+            <ConnectionBadge connected={connected} />
+            <TopbarOutlineBtn onClick={() => setOutputLines([])}>Clear</TopbarOutlineBtn>
+            <RunButton status={status} onClick={handleRun} />
+          </>
+        }
+      />
 
-          <Button
-            variant="ghost"
-            onClick={() => setOutputLines([])}
-          >
-            Clear
-          </Button>
-
-          <Button
-            variant="success"
-            onClick={handleRun}
-            disabled={status === 'RUNNING'}
-            className="flex items-center gap-2"
-          >
-            {status === 'RUNNING' ? '⟳ Running...' : '▶ Run'}
-          </Button>
-        </div>
-      </div>
-
-      {/* Main content */}
-      <div className="flex-1 flex gap-3 p-3 overflow-hidden">
+      {/* ── WORKSPACE ──────────────────────────────────────────────────────── */}
+      <div
+        className="flex-1 flex gap-2 overflow-hidden"
+        style={{ padding: 8, zIndex: 1, position: 'relative' }}
+      >
         {/* Editor — 60% */}
         <div className="flex-1 overflow-hidden">
-          <CodeEditor
-            code={code}
-            language={language}
-            onChange={handleCodeChange}
-          />
+          <CodeEditor code={code} language={language} onChange={handleCodeChange} />
         </div>
 
         {/* Right panel — 40% */}
-        <div className="w-[40%] flex flex-col gap-3 overflow-hidden">
-          {/* Terminal — takes most space */}
+        <div className="flex flex-col gap-2 overflow-hidden" style={{ width: '40%' }}>
+          {/* Terminal */}
           <div className="flex-1 overflow-hidden">
             <Terminal lines={outputLines} status={status} />
           </div>
 
-          {/* Members panel — fixed height */}
+          {/* Members panel */}
           {roomId && (
-            <div className="h-48 shrink-0">
+            <div style={{ height: 192, flexShrink: 0 }}>
               <MemberList members={members} roomId={roomId} />
             </div>
           )}
         </div>
       </div>
+
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,300;0,400;0,600;0,700;1,300;1,400;1,600&family=DM+Mono:wght@300;400;500&display=swap');
+      `}</style>
     </div>
   )
 }

@@ -1,8 +1,9 @@
 import validateEnv from "./src/config/env.js";
 import dotenv from "dotenv";
 
-validateEnv();
+// CRITICAL: Load env vars BEFORE validation
 dotenv.config();
+validateEnv();
 
 import express from "express";
 import cors from "cors";
@@ -15,10 +16,11 @@ import authRoutes from "./src/routes/auth.routes.js";
 import executeRoutes from "./src/routes/execute.routes.js";
 import roomRoutes from "./src/routes/room.routes.js";
 import errorHandler from "./src/middleware/errorHandler.js";
-import { apiLimiter, executionLimiter } from "./src/middleware/rateLimiter.js";
+import { apiLimiter } from "./src/middleware/rateLimiter.js";
 import { cleanupOrphanContainers } from "./src/services/containerCleanup.js";
-import socketHandlers from "./src/services/socketHandlers.js";
+import setupSocket from "./src/services/socketHandlers.js";
 import csrfProtection from "./src/middleware/csrfProtection.js";
+import { setIo } from "./src/services/queue.js";
 
 const app = express();
 app.set("trust proxy", 1);
@@ -31,7 +33,10 @@ const io = new Server(httpServer, {
     credentials: true,
   },
 });
-socketHandlers(io);
+
+// Wire socket handlers and give the queue access to `io`
+setupSocket(io);
+setIo(io);
 
 const clientOrigin = process.env.CLIENT_URL;
 
@@ -63,10 +68,10 @@ app.use(apiLimiter);
 app.use(csrfProtection);
 
 app.use("/api/auth", authRoutes);
-app.use("/api/execute", executionLimiter, executeRoutes);  
+app.use("/api/execute", executeRoutes);
 app.use("/api/rooms", roomRoutes);
-// Backwards-compatible aliases for older client paths
-app.use("/api", executionLimiter, executeRoutes);
+// Backwards-compatible aliases
+app.use("/api", executeRoutes);
 app.use("/api/room", roomRoutes);
 
 app.get("/health", (req, res) => {
@@ -85,4 +90,6 @@ httpServer.listen(PORT, () => {
 });
 
 // Cleanup orphan containers on startup
-await cleanupOrphanContainers().catch(err => console.error("Cleanup error:", err));
+await cleanupOrphanContainers().catch((err) =>
+  console.error("Cleanup error:", err),
+);

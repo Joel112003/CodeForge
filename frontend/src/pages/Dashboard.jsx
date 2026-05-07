@@ -5,32 +5,49 @@ import { getHistory, createRoom } from '../services/api'
 import useAuthStore from '../store/authStore'
 import Navbar from '../components/layout/Navbar'
 import Badge from '../components/ui/Badge'
-import Button from '../components/ui/Button'
+import { showToast, showErrorToast } from '../utils/toastMessages'
 import { SkeletonHistoryRows, SkeletonStatCards } from '../components/ui/Skeleton'
+import NoiseBackground from '../components/ui/NoiseBackground'
+import JoinRoomModal from '../components/room/JoinRoomModal'
 
+/* ─── design tokens (mirrors HTML preview) ─────────────────────────────────── */
+const T = {
+  parchment: '#F8F4ED',
+  panel:     '#FAF7F0',
+  ink:       '#1A1208',
+  ink2:      '#4A3E30',
+  muted:     '#7A6E5A',
+  faint:     '#A0917E',
+  rule:      '#E0D8CA',
+  accent:    '#C04A1A',
+  accent2:   '#8C3310',
+}
+
+/* ─── motion presets ────────────────────────────────────────────────────────── */
 const fadeUp = {
-  initial: { opacity: 0, y: 10 },
-  animate: { opacity: 1, y: 0 },
+  initial:    { opacity: 0, y: 10 },
+  animate:    { opacity: 1, y: 0 },
   transition: { duration: 0.45, ease: 'easeOut' },
 }
+const stagger = { animate: { transition: { staggerChildren: 0.07 } } }
 
-const stagger = {
-  animate: { transition: { staggerChildren: 0.07 } },
-}
-
-// Plus icon
+/* ─── Plus icon ─────────────────────────────────────────────────────────────── */
 const PlusIcon = () => (
   <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
     <path d="M6 1v10M1 6h10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
   </svg>
 )
 
+/* ═══════════════════════════════════════════════════════════════════════════════
+   Dashboard
+   ══════════════════════════════════════════════════════════════════════════════ */
 export default function Dashboard() {
-  const [history, setHistory] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [creating, setCreating] = useState(false)
+  const [history,    setHistory]    = useState([])
+  const [loading,    setLoading]    = useState(true)
+  const [creating,   setCreating]   = useState(false)
+  const [joinOpen,   setJoinOpen]   = useState(false)
   const { user } = useAuthStore()
-  const navigate = useNavigate()
+  const navigate  = useNavigate()
 
   useEffect(() => {
     getHistory()
@@ -43,74 +60,146 @@ export default function Dashboard() {
     setCreating(true)
     try {
       const res = await createRoom()
+      showToast('Session created successfully', 'success')
       navigate(`/editor/${res.data.roomId}`)
-    } catch {
-      // error handling
+    } catch (err) {
+      showErrorToast(err?.response?.data?.message || 'Failed to create session. Please try again.')
     } finally {
       setCreating(false)
     }
   }
 
   const stats = [
-    { label: 'Total Runs',  value: history.length,                                             accent: false },
-    { label: 'Completed',   value: history.filter((h) => h.status === 'COMPLETED').length,     accent: true  },
-    { label: 'Errors',      value: history.filter((h) => h.status === 'ERROR').length,         accent: false },
+    { label: 'Total Runs', value: history.length,                                           accent: false },
+    { label: 'Completed',  value: history.filter((h) => h.status === 'COMPLETED').length,  accent: true  },
+    { label: 'Errors',     value: history.filter((h) => h.status === 'ERROR').length,      accent: false },
   ]
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: '#0D0B09' }}>
+    <div className="min-h-screen flex flex-col" style={{ background: T.parchment, fontFamily: "'DM Mono', monospace" }}>
+      <NoiseBackground />
+
       <Navbar />
 
       <main className="relative flex-1 max-w-5xl mx-auto w-full px-6 lg:px-8 py-10">
 
-        {/* Subtle grid texture */}
-        <div
-          className="fixed inset-0 pointer-events-none -z-10 opacity-[0.015]"
-          style={{
-            backgroundImage: `
-              linear-gradient(#E07B39 1px, transparent 1px),
-              linear-gradient(90deg, #E07B39 1px, transparent 1px)
-            `,
-            backgroundSize: '80px 80px',
-          }}
-        />
+        {/* ── HEADER ─────────────────────────────────────────────────────────── */}
+        <motion.div
+          {...fadeUp}
+          className="mb-8"
+          style={{ background: T.panel, border: `1px solid ${T.rule}` }}
+        >
+          {/* top accent line */}
+          <div style={{ height: 1, background: `linear-gradient(90deg, transparent, ${T.accent}66, transparent)` }} />
 
-        {/* ── HEADER ── */}
-        <motion.div {...fadeUp} className="border border-[#2A2620] bg-[#0F0D0B] mb-8">
-          {/* Top accent line */}
-          <div className="h-px" style={{ background: 'linear-gradient(90deg, transparent, rgba(224,123,57,0.4), transparent)' }} />
-          
           <div className="px-6 lg:px-8 py-7 flex items-start lg:items-center justify-between gap-6 flex-wrap">
             <div>
+              {/* breadcrumb */}
               <div className="flex items-center gap-2 mb-3">
-                <span className="font-mono text-[10px] tracking-[0.16em] uppercase text-[#4A4540]">CodeForge</span>
-                <span className="text-[#2A2620]">/</span>
-                <span className="font-mono text-[10px] tracking-[0.16em] uppercase text-[#4A4540]">Dashboard</span>
+                <span style={{ fontSize: 9, letterSpacing: '0.16em', textTransform: 'uppercase', color: T.faint }}>
+                  CodeForge
+                </span>
+                <span style={{ color: T.rule }}>/</span>
+                <span style={{ fontSize: 9, letterSpacing: '0.16em', textTransform: 'uppercase', color: T.faint }}>
+                  Dashboard
+                </span>
               </div>
-              <h1 className="font-mono text-2xl lg:text-3xl font-bold tracking-tight text-[#E8DDD0] mb-2">
-                Command Center
-              </h1>
+
+              {/* logo row */}
+              <div className="flex items-center gap-3 mb-2">
+                <div
+                  style={{
+                    width: 30, height: 30,
+                    background: T.accent,
+                    boxShadow: `2px 2px 0 ${T.accent2}`,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                  }}
+                >
+                  <span style={{ fontFamily: "'Spectral', serif", fontWeight: 700, color: '#FAF7F0', fontSize: '0.9rem', fontStyle: 'italic' }}>C</span>
+                </div>
+                <h1
+                  style={{
+                    fontFamily: "'Spectral', serif",
+                    fontSize: '2rem',
+                    fontWeight: 300,
+                    lineHeight: 1.05,
+                    color: T.ink,
+                    margin: 0,
+                  }}
+                >
+                  Command <em style={{ fontStyle: 'italic', fontWeight: 700, color: T.accent }}>Center</em>
+                </h1>
+              </div>
+
               {user?.email && (
-                <p className="font-mono text-xs text-[#5A5550]">
-                  <span className="text-[#3A3530]">◆ </span>
-                  {user.email}
+                <p style={{ fontSize: 10, color: T.faint, letterSpacing: '0.02em' }}>
+                  <span style={{ color: T.rule }}>◆ </span>{user.email}
                 </p>
               )}
             </div>
 
-            <Button
-              onClick={handleNewSession}
-              loading={creating}
-              variant="primary"
-              size="lg"
-              icon={!creating && <PlusIcon />}
-            >
-              {creating ? 'Creating…' : 'New Session'}
-            </Button>
+            {/* Action buttons */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              {/* Join Session */}
+              <button
+                onClick={() => setJoinOpen(true)}
+                style={{
+                  height: 42, padding: '0 20px',
+                  background: T.panel,
+                  border: `1px solid ${T.rule}`,
+                  borderLeft: `3px solid ${T.accent}`,
+                  color: T.ink,
+                  fontFamily: "'DM Mono', monospace",
+                  fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase',
+                  cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', gap: 10,
+                  boxShadow: `3px 3px 0 ${T.rule}`,
+                  transition: 'all 0.1s',
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.transform = 'translate(1px,1px)'; e.currentTarget.style.boxShadow = `2px 2px 0 ${T.rule}` }}
+                onMouseLeave={(e) => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = `3px 3px 0 ${T.rule}` }}
+              >
+                <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
+                  <path d="M13 8H3M8 3l5 5-5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+                Join Session
+              </button>
+
+              {/* New Session */}
+              <button
+                onClick={handleNewSession}
+                disabled={creating}
+                style={{
+                  height: 42,
+                  padding: '0 24px',
+                  background: creating
+                    ? T.faint
+                    : `linear-gradient(135deg, #E8501E, ${T.accent} 60%, #A53D12)`,
+                  border: `1px solid ${T.accent}`,
+                  color: '#fff',
+                  fontFamily: "'DM Mono', monospace",
+                  fontSize: 11,
+                  letterSpacing: '0.08em',
+                  textTransform: 'uppercase',
+                  cursor: creating ? 'not-allowed' : 'pointer',
+                  display: 'flex', alignItems: 'center', gap: 10,
+                  boxShadow: `3px 3px 0 ${T.accent2}`,
+                  position: 'relative', overflow: 'hidden',
+                  transition: 'all 0.1s',
+                }}
+                onMouseEnter={(e) => { if (!creating) { e.currentTarget.style.transform = 'translate(1px,1px)'; e.currentTarget.style.boxShadow = `2px 2px 0 ${T.accent2}` } }}
+                onMouseLeave={(e) => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = `3px 3px 0 ${T.accent2}` }}
+              >
+                <ShineLayer />
+                {!creating && <PlusIcon />}
+                {creating ? 'Creating…' : 'New Session'}
+                <span>→</span>
+              </button>
+            </div>
           </div>
         </motion.div>
 
-        {/* ── STATS ── */}
+        {/* ── STATS ──────────────────────────────────────────────────────────── */}
         <AnimatePresence mode="wait">
           {loading ? (
             <motion.div key="s-skel" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
@@ -133,21 +222,21 @@ export default function Dashboard() {
           ) : null}
         </AnimatePresence>
 
-        {/* ── HISTORY PANEL ── */}
+        {/* ── HISTORY PANEL ──────────────────────────────────────────────────── */}
         <motion.div
           {...fadeUp}
           transition={{ ...fadeUp.transition, delay: 0.1 }}
-          className="border border-[#2A2620] bg-[#0F0D0B]"
+          style={{ border: `1px solid ${T.rule}`, background: T.panel }}
         >
-          {/* Panel header */}
-          <div className="border-b border-[#1E1C18] px-6 lg:px-8 py-4 flex items-center justify-between">
+          {/* panel header */}
+          <div
+            className="px-6 lg:px-8 py-4 flex items-center justify-between"
+            style={{ borderBottom: `1px solid ${T.rule}` }}
+          >
             <div className="flex items-center gap-3">
-              <motion.span
-                className="w-1.5 h-1.5 rounded-full bg-[#E07B39]"
-                animate={{ opacity: [0.5, 1, 0.5] }}
-                transition={{ duration: 2.5, repeat: Infinity }}
-              />
-              <span className="font-mono text-[10px] tracking-[0.16em] uppercase text-[#5A5550]">
+              {/* eyebrow line decoration */}
+              <span style={{ display: 'block', width: 16, height: 1, background: T.accent }} />
+              <span style={{ fontSize: 9, letterSpacing: '0.16em', textTransform: 'uppercase', color: T.faint }}>
                 Execution History
               </span>
             </div>
@@ -156,7 +245,7 @@ export default function Dashboard() {
                 <motion.span
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  className="font-mono text-[10px] text-[#3A3530]"
+                  style={{ fontSize: 9, color: T.faint }}
                 >
                   {history.length} run{history.length !== 1 ? 's' : ''}
                 </motion.span>
@@ -164,7 +253,7 @@ export default function Dashboard() {
             </AnimatePresence>
           </div>
 
-          {/* Panel content */}
+          {/* panel content */}
           <AnimatePresence mode="wait">
             {loading ? (
               <motion.div key="skeleton" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
@@ -178,15 +267,11 @@ export default function Dashboard() {
                 variants={stagger}
                 initial="initial"
                 animate="animate"
-                className="divide-y divide-[#1A1816]"
+                style={{ borderTop: 'none' }}
               >
                 {history.map((item, idx) => (
-                  <motion.div key={item.id} variants={fadeUp}>
-                    <HistoryRow
-                      item={item}
-                      index={idx}
-                      onClick={() => navigate(`/editor?execution=${item.id}`)}
-                    />
+                  <motion.div key={item.id} variants={fadeUp} style={{ borderBottom: `1px solid ${T.rule}` }}>
+                    <HistoryRow item={item} index={idx} onClick={() => navigate(`/editor?execution=${item.id}`)} />
                   </motion.div>
                 ))}
               </motion.div>
@@ -194,113 +279,194 @@ export default function Dashboard() {
           </AnimatePresence>
         </motion.div>
       </main>
+
+      {/* Join Room Modal — rendered at page level to overlay everything */}
+      <JoinRoomModal open={joinOpen} onClose={() => setJoinOpen(false)} />
     </div>
   )
 }
 
-// ─── History row ──────────────────────────────────────────────────────────────
-function HistoryRow({ item, index, onClick }) {
+/* ─── ShineLayer (matches .shine in HTML) ───────────────────────────────────── */
+function ShineLayer() {
   return (
-    <motion.div
+    <div
+      style={{
+        position: 'absolute', inset: 0, pointerEvents: 'none',
+        background: 'linear-gradient(105deg, transparent 40%, rgba(255,255,255,0.12) 50%, transparent 60%)',
+        backgroundSize: '200% 100%',
+        animation: 'cf-shine 3.5s linear infinite',
+      }}
+    />
+  )
+}
+
+/* ─── History Row ───────────────────────────────────────────────────────────── */
+function HistoryRow({ item, index, onClick }) {
+  const [hovered, setHovered] = useState(false)
+  return (
+    <div
       onClick={onClick}
-      className="group relative px-6 lg:px-8 py-3.5 flex items-center gap-4 cursor-pointer"
-      whileHover={{ backgroundColor: 'rgba(224,123,57,0.025)' }}
-      transition={{ duration: 0.12 }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        position: 'relative',
+        padding: '14px 32px',
+        display: 'flex', alignItems: 'center', gap: 16,
+        cursor: 'pointer',
+        background: hovered ? `rgba(192,74,26,0.025)` : 'transparent',
+        transition: 'background 0.12s',
+      }}
     >
-      {/* Left accent */}
+      {/* left accent bar */}
       <motion.span
-        className="absolute left-0 top-2 bottom-2 w-0.5"
-        style={{ background: 'linear-gradient(180deg, #E07B39, #F09A5A)' }}
+        style={{
+          position: 'absolute', left: 0, top: 8, bottom: 8, width: 3,
+          background: `linear-gradient(180deg, ${T.accent}, #F09A5A)`,
+          transformOrigin: 'center',
+        }}
         initial={{ scaleY: 0, opacity: 0 }}
-        whileHover={{ scaleY: 1, opacity: 1 }}
+        animate={{ scaleY: hovered ? 1 : 0, opacity: hovered ? 1 : 0 }}
         transition={{ duration: 0.18 }}
       />
 
-      {/* Index */}
-      <span className="font-mono text-[10px] text-[#3A3530] w-5 shrink-0 tabular-nums">
+      {/* index */}
+      <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 10, color: T.faint, width: 20, flexShrink: 0, tabularNums: true }}>
         {String(index + 1).padStart(2, '0')}
       </span>
 
-      {/* Language */}
-      <span className="font-mono text-[10px] px-2 py-1 shrink-0 border border-[#2A2620] text-[#6A6460] tracking-wide uppercase">
+      {/* language tag */}
+      <span style={{
+        fontFamily: "'DM Mono', monospace", fontSize: 9,
+        padding: '3px 8px', flexShrink: 0,
+        border: `1px solid ${T.rule}`,
+        background: '#F5F0E8',
+        color: T.accent,
+        letterSpacing: '0.1em', textTransform: 'uppercase',
+      }}>
         {item.language}
       </span>
 
-      {/* Code preview */}
-      <span className="font-mono text-xs text-[#4A4540] group-hover:text-[#6A6460] transition-colors duration-200 truncate flex-1 min-w-0">
+      {/* code preview */}
+      <span style={{
+        fontFamily: "'DM Mono', monospace", fontSize: 12,
+        color: hovered ? T.muted : T.faint,
+        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+        flex: 1, minWidth: 0,
+        transition: 'color 0.2s',
+      }}>
         {item.code?.split('\n')[0] || '— empty —'}
       </span>
 
-      {/* Meta */}
-      <div className="flex items-center gap-4 shrink-0">
+      {/* meta */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexShrink: 0 }}>
         {item.duration_ms && (
-          <span className="font-mono text-[10px] text-[#3A3530] hidden sm:block tabular-nums">
+          <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 10, color: T.faint }}>
             {item.duration_ms}ms
           </span>
         )}
         <Badge status={item.status} />
       </div>
-    </motion.div>
+    </div>
   )
 }
 
-// ─── Stat card ────────────────────────────────────────────────────────────────
+/* ─── Stat Card ─────────────────────────────────────────────────────────────── */
 function StatCard({ label, value, accent }) {
   return (
-    <div className="border border-[#2A2620] bg-[#0F0D0B] px-5 py-5 relative overflow-hidden group">
-      {/* Corner accent */}
-      <div className="absolute top-0 right-0 w-8 h-8 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-        style={{ background: 'linear-gradient(225deg, rgba(224,123,57,0.08), transparent)' }}
-      />
+    <div
+      style={{
+        border: `1px solid ${T.rule}`,
+        background: T.panel,
+        padding: '20px 20px',
+        position: 'relative', overflow: 'hidden',
+      }}
+    >
+      {/* top rule */}
+      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: accent ? T.accent : T.rule }} />
       <motion.div
-        className="font-mono font-black text-3xl mb-2 tabular-nums"
-        style={{ color: accent ? '#E07B39' : '#C4B896' }}
+        style={{
+          fontFamily: "'Spectral', serif",
+          fontWeight: 700, fontSize: '2rem',
+          marginBottom: 6,
+          color: accent ? T.accent : T.ink,
+        }}
         initial={{ opacity: 0, y: 6 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4 }}
       >
         {value}
       </motion.div>
-      <div className="font-mono text-[10px] tracking-[0.14em] uppercase text-[#4A4540]">
+      <div style={{ fontSize: 9, letterSpacing: '0.14em', textTransform: 'uppercase', color: T.faint }}>
         {label}
       </div>
     </div>
   )
 }
 
-// ─── Empty state ──────────────────────────────────────────────────────────────
+/* ─── Empty State ───────────────────────────────────────────────────────────── */
 function EmptyState({ onNew }) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4 }}
-      className="flex flex-col items-center justify-center py-20 gap-8"
+      style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '80px 0', gap: 32 }}
     >
-      <div className="relative w-14 h-14 border border-[#2A2620] flex items-center justify-center"
-        style={{ background: '#0F0D0B' }}
-      >
-        <span className="font-mono text-xl text-[#3A3530]">{'>'}</span>
+      {/* terminal icon */}
+      <div style={{
+        width: 56, height: 56,
+        border: `1px solid ${T.rule}`,
+        background: T.panel,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        position: 'relative',
+      }}>
+        <span style={{ fontFamily: "'Spectral', serif", fontSize: '1.2rem', color: T.faint, fontStyle: 'italic' }}>{'>'}</span>
         <motion.span
-          className="absolute bottom-2 right-2.5 w-1.5 h-2.5"
-          style={{ background: '#2A2620' }}
+          style={{ position: 'absolute', bottom: 8, right: 10, width: 6, height: 10, background: T.rule }}
           animate={{ opacity: [0, 1, 0] }}
           transition={{ duration: 1.1, repeat: Infinity }}
         />
       </div>
 
-      <div className="text-center">
-        <p className="font-mono text-[10px] tracking-[0.16em] uppercase text-[#4A4540] mb-2">
-          No Executions Yet
-        </p>
-        <p className="font-mono text-xs text-[#3A3530] max-w-xs">
+      <div style={{ textAlign: 'center' }}>
+        {/* eyebrow */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 10 }}>
+          <span style={{ display: 'block', width: 16, height: 1, background: T.accent }} />
+          <span style={{ fontSize: 9, letterSpacing: '0.18em', textTransform: 'uppercase', color: T.accent }}>
+            No Executions Yet
+          </span>
+        </div>
+        <p style={{ fontFamily: "'Spectral', serif", fontSize: '0.85rem', color: T.muted, fontStyle: 'italic', maxWidth: 240 }}>
           Create a session to run code in isolated containers.
         </p>
       </div>
 
-      <Button variant="outline" size="md" onClick={onNew} icon={<PlusIcon />}>
-        First Session
-      </Button>
+      <button
+        onClick={onNew}
+        style={{
+          height: 38, padding: '0 20px',
+          background: T.panel,
+          border: `1px solid ${T.rule}`,
+          borderLeft: `3px solid ${T.accent}`,
+          color: T.ink,
+          fontFamily: "'DM Mono', monospace",
+          fontSize: 10, letterSpacing: '0.08em', textTransform: 'uppercase',
+          cursor: 'pointer',
+          display: 'flex', alignItems: 'center', gap: 8,
+          boxShadow: `2px 2px 0 ${T.rule}`,
+          transition: 'all 0.1s',
+        }}
+      >
+        <PlusIcon /> First Session
+      </button>
     </motion.div>
   )
+}
+
+/* ─── inject shine keyframe ─────────────────────────────────────────────────── */
+if (typeof document !== 'undefined' && !document.getElementById('cf-shine-style')) {
+  const s = document.createElement('style')
+  s.id = 'cf-shine-style'
+  s.textContent = `@keyframes cf-shine { 0%{background-position:200% 0} 100%{background-position:-200% 0} }`
+  document.head.appendChild(s)
 }

@@ -5,6 +5,6 @@ import { authenticateToken } from "../middleware/auth.middleware.js";
 const router = express.Router();
 
 router.post("/", authenticateToken, createRoomHandler);
-router.get("/:roomID", authenticateToken, getRoomHandler);
+router.get("/:roomId", authenticateToken, getRoomHandler);
 
 export default router;

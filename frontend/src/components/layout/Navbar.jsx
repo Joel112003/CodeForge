@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useNavigate, Link, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import useAuthStore from '../../store/authStore'
@@ -5,23 +6,126 @@ import { logoutUser } from '../../services/api'
 import { showAuthSuccessToast } from '../../utils/toastMessages'
 import Button from '../ui/Button'
 
+/* ─── design tokens ─────────────────────────────────────────────────────────── */
+const T = {
+  panel:   '#FAF7F0',
+  deep:    '#F5F0E8',
+  ink:     '#1A1208',
+  muted:   '#7A6E5A',
+  faint:   '#A0917E',
+  rule:    '#E0D8CA',
+  accent:  '#C04A1A',
+  accent2: '#8C3310',
+}
+
+/* ─── Logo square ───────────────────────────────────────────────────────────── */
+function LogoSquare() {
+  return (
+    <div style={{
+      width: 38, height: 38,
+      background: T.accent,
+      boxShadow: `2px 2px 0 ${T.accent2}`,
+      display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+    }}>
+      <span style={{
+        fontFamily: "'Spectral', serif",
+        fontWeight: 700, fontStyle: 'italic',
+        color: '#FAF7F0', fontSize: '1.1rem',
+      }}>C</span>
+    </div>
+  )
+}
+
+/* ─── Inline button helpers (public nav only) ───────────────────────────────── */
+function GhostBtn({ onClick, children }) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        height: 38, padding: '0 18px',
+        background: 'none', border: 'none',
+        color: T.muted, fontFamily: "'DM Mono', monospace",
+        fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase',
+        cursor: 'pointer', transition: 'color 0.15s',
+      }}
+      onMouseEnter={(e) => { e.currentTarget.style.color = T.ink }}
+      onMouseLeave={(e) => { e.currentTarget.style.color = T.muted }}
+    >
+      {children}
+    </button>
+  )
+}
+
+function OutlineBtn({ onClick, children }) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        height: 38, padding: '0 18px',
+        background: T.panel, border: `1px solid ${T.rule}`,
+        color: T.ink, fontFamily: "'DM Mono', monospace",
+        fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase',
+        cursor: 'pointer',
+        boxShadow: `2px 2px 0 ${T.rule}`, transition: 'all 0.1s',
+      }}
+      onMouseEnter={(e) => { e.currentTarget.style.transform = 'translate(1px,1px)'; e.currentTarget.style.boxShadow = `1px 1px 0 ${T.rule}` }}
+      onMouseLeave={(e) => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = `2px 2px 0 ${T.rule}` }}
+    >
+      {children}
+    </button>
+  )
+}
+
+function PrimaryBtn({ onClick, children }) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        height: 38, padding: '0 20px',
+        background: `linear-gradient(135deg, #E8501E, ${T.accent} 60%, #A53D12)`,
+        border: `1px solid ${T.accent}`,
+        color: '#fff', fontFamily: "'DM Mono', monospace",
+        fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase',
+        cursor: 'pointer',
+        boxShadow: `2px 2px 0 ${T.accent2}`,
+        position: 'relative', overflow: 'hidden',
+        transition: 'all 0.1s',
+      }}
+      onMouseEnter={(e) => { e.currentTarget.style.transform = 'translate(1px,1px)'; e.currentTarget.style.boxShadow = `1px 1px 0 ${T.accent2}` }}
+      onMouseLeave={(e) => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = `2px 2px 0 ${T.accent2}` }}
+    >
+      <div style={{
+        position: 'absolute', inset: 0, pointerEvents: 'none',
+        background: 'linear-gradient(105deg, transparent 40%, rgba(255,255,255,0.12) 50%, transparent 60%)',
+        backgroundSize: '200% 100%', animation: 'cf-shine 3.5s linear infinite',
+      }} />
+      {children}
+    </button>
+  )
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   Navbar
+   ══════════════════════════════════════════════════════════════════════════════ */
 export default function Navbar({ variant = 'app' }) {
   const { user, logout } = useAuthStore()
-  const navigate = useNavigate()
-  const location = useLocation()
+  const navigate  = useNavigate()
+  const location  = useLocation()
+  const [loggingOut, setLoggingOut] = useState(false)
 
   async function handleLogout() {
-    try {
-      await logoutUser()
-    } finally {
+    setLoggingOut(true)
+    try { await logoutUser() } finally {
       logout()
       showAuthSuccessToast('logout')
+      setLoggingOut(false)
       navigate('/login')
     }
   }
 
+  /* ── PUBLIC navbar (login / register / landing) ── */
   if (variant === 'public') {
-    const isLogin = location.pathname === '/login'
+    const isLogin    = location.pathname === '/login'
     const isRegister = location.pathname === '/register'
     const showTerminal = !isLogin && !isRegister
 
@@ -30,116 +134,151 @@ export default function Navbar({ variant = 'app' }) {
         initial={{ opacity: 0, y: -12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="sticky top-0 z-50 flex h-16 items-center justify-between border-b border-[#E0D8CA] bg-[#F8F4ED]/90 px-8 backdrop-blur-md lg:px-16"
+        style={{
+          position: 'sticky', top: 0, zIndex: 50,
+          height: 72,
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          borderBottom: `1px solid ${T.rule}`,
+          background: 'rgba(248,244,237,0.94)',
+          backdropFilter: 'blur(16px)',
+          padding: '0 40px',
+          fontFamily: "'DM Mono', monospace",
+        }}
       >
-        <Link to="/" className="flex items-center gap-3">
-          <div className="flex h-8.5 w-8.5 items-center justify-center bg-[#C04A1A] shadow-[2px_2px_0_#8C3310]">
-            <span className="font-['Spectral'] text-[1rem] font-bold italic text-[#FAF7F0]">C</span>
-          </div>
-          <span className="text-[11px] font-medium uppercase tracking-[0.13em] text-[#7A6E5A]">
+        <div style={{
+          position: 'absolute', top: 0, left: 0, right: 0, height: 2,
+          background: `linear-gradient(90deg, transparent, ${T.accent}66, transparent)`,
+        }} />
+
+        <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: 12, textDecoration: 'none' }}>
+          <LogoSquare />
+          <span style={{ fontSize: 13, letterSpacing: '0.12em', textTransform: 'uppercase', color: T.muted, fontWeight: 500 }}>
             CodeForge
           </span>
         </Link>
 
-        <div className="flex items-center gap-3">
-          {!isLogin && (
-            <Button variant="ghost" size="sm" onClick={() => navigate('/login')}>
-              Login
-            </Button>
-          )}
-          {showTerminal && (
-            <Button variant="outline" size="sm" onClick={() => navigate('/dashboard')}>
-              Access Terminal
-            </Button>
-          )}
-          {!isRegister && (
-            <Button size="sm" onClick={() => navigate('/register')}>
-              Get Started
-            </Button>
-          )}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {!isLogin    && <GhostBtn onClick={() => navigate('/login')}>Login</GhostBtn>}
+          {showTerminal && <OutlineBtn onClick={() => navigate('/playground')}>Access Terminal</OutlineBtn>}
+          {!isRegister  && <PrimaryBtn onClick={() => navigate('/register')}>Get Started →</PrimaryBtn>}
         </div>
       </motion.nav>
     )
   }
 
+  /* ── APP navbar (dashboard / history / editor) ── */
   return (
     <motion.nav
       initial={{ opacity: 0, y: -8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, ease: 'easeOut' }}
-      className="sticky top-0 z-50 flex h-14 items-center border-b border-white/6 bg-[rgba(12,14,20,0.85)] px-4 backdrop-blur-[20px]"
+      style={{
+        position: 'sticky', top: 0, zIndex: 50,
+        height: 68,
+        display: 'flex', alignItems: 'center',
+        borderBottom: `1px solid ${T.rule}`,
+        background: 'rgba(250,247,240,0.94)',
+        backdropFilter: 'blur(16px)',
+        padding: '0 24px',
+        fontFamily: "'DM Mono', monospace",
+      }}
     >
-      {/* Brand */}
-      <Link to="/dashboard" className="mr-8 flex items-center gap-2.5 group">
-        <motion.div
-          className="flex h-7 w-7 items-center justify-center rounded-lg text-sm font-bold text-white"
-          style={{
-            background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
-            boxShadow: '0 2px 8px rgba(99,102,241,0.4)',
-          }}
-          whileHover={{ scale: 1.05, rotate: -3 }}
-          transition={{ duration: 0.2 }}
-        >
-          C
-        </motion.div>
-        <span className="text-[15px] font-semibold tracking-[-0.02em] text-white transition-colors group-hover:text-slate-200">
+      <div style={{
+        position: 'absolute', top: 0, left: 0, right: 0, height: 2,
+        background: `linear-gradient(90deg, transparent, ${T.accent}66, transparent)`,
+      }} />
+
+      <Link
+        to="/dashboard"
+        style={{ display: 'flex', alignItems: 'center', gap: 12, textDecoration: 'none', marginRight: 40 }}
+      >
+        <LogoSquare />
+        <span style={{ fontSize: 13, letterSpacing: '0.12em', textTransform: 'uppercase', color: T.muted, fontWeight: 500 }}>
           CodeForge
         </span>
       </Link>
 
-      {/* Nav links */}
-      <div className="hidden flex-1 items-center gap-1 md:flex">
-        <NavLink to="/dashboard" active={location.pathname === '/dashboard'}>
-          Dashboard
-        </NavLink>
-        <NavLink to="/history" active={location.pathname === '/history'}>
-          History
-        </NavLink>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 2, flex: 1 }}>
+        <AppNavLink to="/dashboard" active={location.pathname === '/dashboard'}>Dashboard</AppNavLink>
+        <AppNavLink to="/history"   active={location.pathname === '/history'}>History</AppNavLink>
       </div>
 
-      {/* Right */}
-      <div className="ml-auto flex items-center gap-3">
-        {/* Status dot */}
-        <div className="hidden items-center gap-1.5 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1 sm:flex">
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginLeft: 'auto' }}>
+        {/* live dot */}
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 8,
+          padding: '5px 14px',
+          background: '#EDFAF3', border: '1px solid #6EE7B7',
+        }}>
           <motion.span
-            className="h-1.5 w-1.5 rounded-full bg-emerald-400"
+            style={{ width: 7, height: 7, borderRadius: '50%', background: '#10B981', display: 'block' }}
             animate={{ opacity: [0.5, 1, 0.5] }}
             transition={{ duration: 2, repeat: Infinity }}
           />
-          <span className="text-[11px] font-medium tracking-wide text-emerald-400">Live</span>
+          <span style={{ fontSize: 11, letterSpacing: '0.06em', color: '#064E3B' }}>Live</span>
         </div>
 
+        {/* email */}
         {user?.email && (
-          <span className="hidden max-w-40 truncate text-[13px] text-slate-500 sm:block">
+          <span style={{
+            fontSize: 12, color: T.faint, maxWidth: 200,
+            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+          }}>
             {user.email}
           </span>
         )}
 
-        <Button variant="ghost" size="sm" onClick={handleLogout}>
-          Sign out
+        {/* sign out — proper Button with loading state */}
+        <Button
+          variant="danger"
+          size="sm"
+          onClick={handleLogout}
+          loading={loggingOut}
+          disabled={loggingOut}
+          icon={
+            <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
+              <path d="M6 2H3a1 1 0 00-1 1v10a1 1 0 001 1h3M11 11l3-3-3-3M14 8H6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          }
+        >
+          {loggingOut ? 'Signing out' : 'Sign out'}
         </Button>
       </div>
+
+      <style>{`
+        @keyframes cf-shine { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+      `}</style>
     </motion.nav>
   )
 }
 
-function NavLink({ to, children, active }) {
+/* ─── App nav link ──────────────────────────────────────────────────────────── */
+function AppNavLink({ to, children, active }) {
   return (
     <Link
       to={to}
-      className={[
-        'relative px-3 py-1.5 rounded-lg text-[14px] font-medium transition-all duration-200',
-        active
-          ? 'text-white bg-white/8'
-          : 'text-slate-400 hover:text-slate-200 hover:bg-white/5',
-      ].join(' ')}
+      style={{
+        position: 'relative',
+        padding: '8px 16px',
+        fontSize: 11, letterSpacing: '0.12em', textTransform: 'uppercase',
+        color: active ? T.accent : T.faint,
+        textDecoration: 'none',
+        borderBottom: active ? `2px solid ${T.accent}` : '2px solid transparent',
+        transition: 'all 0.15s',
+        fontFamily: "'DM Mono', monospace",
+      }}
+      onMouseEnter={(e) => { if (!active) e.currentTarget.style.color = T.ink }}
+      onMouseLeave={(e) => { if (!active) e.currentTarget.style.color = T.faint }}
     >
       {children}
       <AnimatePresence>
         {active && (
           <motion.span
-            layoutId="nav-pill"
-            className="absolute inset-0 rounded-lg bg-white/8 -z-10"
+            layoutId="nav-underline"
+            style={{
+              position: 'absolute', bottom: -1, left: 0, right: 0, height: 2,
+              background: T.accent,
+            }}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
