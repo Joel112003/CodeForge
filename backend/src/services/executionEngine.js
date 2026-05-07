@@ -1,19 +1,22 @@
-import Docker from "dockerode";
-import fs from "fs";
-import path from "path";
-import os from "os";
-import { v4 as uuidv4 } from "uuid";
+// Piston API replaces Docker-based execution.
+// Piston is a free, public sandboxed code execution service — no API key needed.
+// Public instance: https://emkc.org/api/v2/piston
 
-const docker = new Docker();
+const PISTON_API = "https://emkc.org/api/v2/piston/execute";
 
+// Maps language names to Piston runtime identifiers
+const PISTON_RUNTIMES = {
+  javascript: { language: "javascript", version: "*" },
+  python: { language: "python", version: "*" },
+};
+
+// Kept for backwards compatibility with containerCleanup.js and validateExecution.js
 export const Images = {
   javascript: "node:18-alpine",
   python: "python:3.11-alpine",
 };
-export const runCommand = {
-  javascript: (file) => ["node", `/code/${file}`],
-  python: (file) => ["python", `/code/${file}`],
-};
+
+export const SUPPORTED_LANGUAGES = Object.keys(PISTON_RUNTIMES);
 
 const LANGUAGE_ALIASES = {
   js: "javascript",
@@ -21,74 +24,47 @@ const LANGUAGE_ALIASES = {
   py: "python",
 };
 
-export const SUPPORTED_LANGUAGES = Object.keys(Images);
-
 export function normalizeLanguage(input) {
   if (!input || typeof input !== "string") return input;
   const lower = input.toLowerCase();
   return LANGUAGE_ALIASES[lower] ?? lower;
 }
 
-const extensions = {
-  python: "py",
-  javascript: "js",
-};
-
+/**
+ * Executes code via the Piston API and streams output via the onChunk callback.
+ * Interface is identical to the old Docker-based executeCode so queue.js is unchanged.
+ *
+ * @param {string} language  - Normalized language name ('javascript' | 'python')
+ * @param {string} code      - Source code to execute
+ * @param {Function} onChunk - Callback(chunk: string, type: 'stdout' | 'stderr')
+ */
 async function executeCode(language, code, onChunk) {
-  const fileName = `${uuidv4()}.${extensions[language]}`;
-  const hostTmpDir = os.tmpdir();
-  const filePath = path.join(hostTmpDir, fileName);
-  fs.writeFileSync(filePath, code);
+  const runtime = PISTON_RUNTIMES[language];
+  if (!runtime) {
+    throw new Error(`Unsupported language: ${language}`);
+  }
 
-  //create a container
-  const container = await docker.createContainer({
-    Image: Images[language],
-    Cmd: runCommand[language](fileName),
-    Labels: { "created-by": "code-engine" },
-    HostConfig: {
-      Memory: 50 * 1024 * 1024, // 50MB
-      CpuQuota: 50000,
-      CpuPeriod: 100000,
-      PidsLimit: 50, // prevents fork bomb
-      ReadonlyRootfs: true,
-      AutoRemove: true,
-      // Mount the host temp directory into the container at /code
-      Binds: [
-        // Normalize Windows backslashes to forward slashes so Docker accepts the path
-        `${hostTmpDir.replace(/\\/g, "/")}:/code:ro`,
-      ], // mount temp dir as read-only
-    },
+  const response = await fetch(PISTON_API, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      language: runtime.language,
+      version: runtime.version,
+      files: [{ name: "main", content: code }],
+    }),
+    signal: AbortSignal.timeout(15000), // 15-second hard timeout
   });
 
-  await container.start();
+  if (!response.ok) {
+    const body = await response.text();
+    throw new Error(`Piston API error ${response.status}: ${body}`);
+  }
 
-  const stream = await container.logs({
-    stdout: true,
-    stderr: true,
-    follow: true,
-  });
+  const result = await response.json();
+  const { stdout, stderr } = result.run ?? {};
 
-  //kill it after 10sec
-  const timeout = setTimeout(async () => {
-    try {
-      await container.kill();
-    } catch {}
-    onChunk("[Execution timed out]", "stderr");
-  }, 10000);
-
-  container.modem.demuxStream(
-    stream,
-    {
-      write: (chunk) => onChunk(chunk.toString(), "stdout"),
-    },
-    {
-      write: (chunk) => onChunk(chunk.toString(), "stderr"),
-    },
-  );
-
-  await new Promise((resolve) => stream.on("end", resolve));
-  clearTimeout(timeout);
-  fs.unlinkSync(filePath);
+  if (stdout) onChunk(stdout, "stdout");
+  if (stderr) onChunk(stderr, "stderr");
 }
 
 export default executeCode;

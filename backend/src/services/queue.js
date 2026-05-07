@@ -8,8 +8,7 @@ const executionQueue = new Queue("execution", {
   defaultJobOptions: { attempts: 1, removeOnComplete: 100, removeOnFail: 500 },
 });
 
-// `io` is injected by server.js after the Socket.IO server is created.
-// This breaks the circular dependency with socketHandlers.js.
+
 let _io = null;
 export function setIo(io) {
   _io = io;
