@@ -39,8 +39,13 @@ api.interceptors.response.use(
         useAuthStore.getState().setAuth(res.data.user, csrfToken);
         return api(originalRequest);
       } catch (refreshError) {
+        // Only show "session expired" toast if the user was actually logged in.
+        // This prevents a toast from firing for unauthenticated visitors on public pages.
+        const wasLoggedIn = !!useAuthStore.getState().user;
         useAuthStore.getState().logout();
-        showAuthErrorToast(refreshError, "Session expired. Please log in again.");
+        if (wasLoggedIn) {
+          showAuthErrorToast(refreshError, "Session expired. Please log in again.");
+        }
         return Promise.reject(refreshError);
       }
     }
