@@ -448,6 +448,6 @@ CodeForge uses a custom warm parchment design language.
 
 <div align="center">
 
-Built with ♦ by the CodeForge team · MIT License
+Built with ♦ by Joel Kunjumon · MIT License
 
 </div>
