@@ -10,14 +10,14 @@ function setAuthCookies(res, token) {
   res.cookie("access_token", token, {
     httpOnly: true,
     secure: isProd,
-    sameSite: "lax",
+    sameSite: isProd ? "none" : "lax",
     maxAge: 60 * 60 * 1000,
   });
 
   res.cookie("csrf_token", csrfToken, {
     httpOnly: false,
     secure: isProd,
-    sameSite: "lax",
+    sameSite: isProd ? "none" : "lax",
     maxAge: 60 * 60 * 1000,
   });
 
@@ -31,7 +31,7 @@ function setCsrfCookie(res) {
   res.cookie("csrf_token", csrfToken, {
     httpOnly: false,
     secure: isProd,
-    sameSite: "lax",
+    sameSite: isProd ? "none" : "lax",
     maxAge: 60 * 60 * 1000,
   });
 
@@ -44,7 +44,7 @@ function setRefreshCookie(res, refreshToken, maxAgeMs) {
   res.cookie("refresh_token", refreshToken, {
     httpOnly: true,
     secure: isProd,
-    sameSite: "lax",
+    sameSite: isProd ? "none" : "lax",
     maxAge: maxAgeMs,
   });
 }
@@ -172,17 +172,17 @@ export const logout = async (req, res) => {
   res.clearCookie("access_token", {
     httpOnly: true,
     secure: isProd,
-    sameSite: "lax",
+    sameSite: isProd ? "none" : "lax",
   });
   res.clearCookie("csrf_token", {
     httpOnly: false,
     secure: isProd,
-    sameSite: "lax",
+    sameSite: isProd ? "none" : "lax",
   });
   res.clearCookie("refresh_token", {
     httpOnly: true,
     secure: isProd,
-    sameSite: "lax",
+    sameSite: isProd ? "none" : "lax",
   });
   res.json({ message: "Logged out" });
 };
