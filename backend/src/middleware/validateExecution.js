@@ -19,4 +19,6 @@ export default function validateExecution(req, res, next) {
         error: "Code must be a string with max length of " + MAX_CODE_LENGTH,
       });
   }
+
+  return next();
 }

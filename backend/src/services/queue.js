@@ -16,12 +16,15 @@ const worker = new Worker(
     const { language, code, socketId, roomId } = job.data;
     const normalizedLanguage = normalizeLanguage(language);
     const socket = getSocket(socketId);
+    if (!socket) {
+      console.warn("[queue] socket not found", { socketId });
+    }
 
     // updated execution status in db
     const execution = await pool.query(
       `INSERT INTO executions 
       (user_id, language, code, status)
-      VALUES ($1, $2, $3, 'RUNNING) RETURNING id`,
+      VALUES ($1, $2, $3, 'RUNNING') RETURNING id`,
       [job.data.userId, normalizedLanguage, code],
     );
     const executionId = execution.rows[0].id;
@@ -31,14 +34,13 @@ const worker = new Worker(
       socket?.emit("status", "RUNNING");
       await executeCode(normalizedLanguage, code, (chunk, type) => {
         //send to the user who executed the code
-        socket?.emit("output", { output: chunk, type });
-      });
+        socket?.emit("output", { output: chunk, data: chunk, type });
 
-      // If in a room, send to everyone in that room too
-      // io is not directly accessible here so we use socket
-      if (roomId) {
-        socket?.to(roomId).emit("output", { data: chunk, type });
-      }
+        // If in a room, send to everyone in that room too
+        if (roomId) {
+          socket?.to(roomId).emit("output", { output: chunk, data: chunk, type });
+        }
+      });
 
       const duration = Date.now() - startTime;
 

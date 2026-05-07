@@ -1,46 +1,94 @@
 import { useNavigate, Link, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import useAuthStore from '../../store/authStore'
+import { logoutUser } from '../../services/api'
+import { showAuthSuccessToast } from '../../utils/toastMessages'
 import Button from '../ui/Button'
 
-export default function Navbar() {
+export default function Navbar({ variant = 'app' }) {
   const { user, logout } = useAuthStore()
   const navigate = useNavigate()
   const location = useLocation()
 
-  function handleLogout() {
-    logout()
-    navigate('/login')
+  async function handleLogout() {
+    try {
+      await logoutUser()
+    } finally {
+      logout()
+      showAuthSuccessToast('logout')
+      navigate('/login')
+    }
+  }
+
+  if (variant === 'public') {
+    const isLogin = location.pathname === '/login'
+    const isRegister = location.pathname === '/register'
+    const showTerminal = !isLogin && !isRegister
+
+    return (
+      <motion.nav
+        initial={{ opacity: 0, y: -12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="sticky top-0 z-50 flex h-16 items-center justify-between border-b border-[#E0D8CA] bg-[#F8F4ED]/90 px-8 backdrop-blur-md lg:px-16"
+      >
+        <Link to="/" className="flex items-center gap-3">
+          <div className="flex h-8.5 w-8.5 items-center justify-center bg-[#C04A1A] shadow-[2px_2px_0_#8C3310]">
+            <span className="font-['Spectral'] text-[1rem] font-bold italic text-[#FAF7F0]">C</span>
+          </div>
+          <span className="text-[11px] font-medium uppercase tracking-[0.13em] text-[#7A6E5A]">
+            CodeForge
+          </span>
+        </Link>
+
+        <div className="flex items-center gap-3">
+          {!isLogin && (
+            <Button variant="ghost" size="sm" onClick={() => navigate('/login')}>
+              Login
+            </Button>
+          )}
+          {showTerminal && (
+            <Button variant="outline" size="sm" onClick={() => navigate('/dashboard')}>
+              Access Terminal
+            </Button>
+          )}
+          {!isRegister && (
+            <Button size="sm" onClick={() => navigate('/register')}>
+              Get Started
+            </Button>
+          )}
+        </div>
+      </motion.nav>
+    )
   }
 
   return (
     <motion.nav
       initial={{ opacity: 0, y: -8 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4 }}
-      className="relative border-b border-warm-700/30 bg-base-950 flex items-stretch h-14 z-50 shrink-0"
+      transition={{ duration: 0.4, ease: 'easeOut' }}
+      className="sticky top-0 z-50 flex h-14 items-center border-b border-white/6 bg-[rgba(12,14,20,0.85)] px-4 backdrop-blur-[20px]"
     >
-      {/* brand left */}
-      <div className="flex items-center px-8 border-r border-warm-700/20 shrink-0">
-        <Link
-          to="/dashboard"
-          className="group flex items-center gap-3"
+      {/* Brand */}
+      <Link to="/dashboard" className="mr-8 flex items-center gap-2.5 group">
+        <motion.div
+          className="flex h-7 w-7 items-center justify-center rounded-lg text-sm font-bold text-white"
+          style={{
+            background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
+            boxShadow: '0 2px 8px rgba(99,102,241,0.4)',
+          }}
+          whileHover={{ scale: 1.05, rotate: -3 }}
+          transition={{ duration: 0.2 }}
         >
-          <motion.span
-            className="w-6 h-6 bg-accent-700 flex items-center justify-center font-display font-bold text-xs text-base-cream shrink-0"
-            whileHover={{ scale: 1.05 }}
-            transition={{ duration: 0.2 }}
-          >
-            C
-          </motion.span>
-          <span className="font-display font-semibold text-lg tracking-tight text-warm-100 group-hover:text-warm-50 transition-colors duration-200">
-            CodeForge
-          </span>
-        </Link>
-      </div>
+          C
+        </motion.div>
+        <span className="text-[15px] font-semibold tracking-[-0.02em] text-white transition-colors group-hover:text-slate-200">
+          CodeForge
+        </span>
+      </Link>
 
-      {/* nav links center */}
-      <div className="hidden md:flex items-center gap-8 px-8 flex-1">
+      {/* Nav links */}
+      <div className="hidden flex-1 items-center gap-1 md:flex">
         <NavLink to="/dashboard" active={location.pathname === '/dashboard'}>
           Dashboard
         </NavLink>
@@ -49,30 +97,26 @@ export default function Navbar() {
         </NavLink>
       </div>
 
-      {/* right section */}
-      <div className="flex items-center gap-4 px-8 ml-auto border-l border-warm-700/20">
-        {/* status */}
-        <div className="hidden sm:flex items-center gap-2">
+      {/* Right */}
+      <div className="ml-auto flex items-center gap-3">
+        {/* Status dot */}
+        <div className="hidden items-center gap-1.5 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1 sm:flex">
           <motion.span
-            className="w-2 h-2 rounded-full bg-accent-600"
-            animate={{ opacity: [0.6, 1, 0.6] }}
-            transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
+            className="h-1.5 w-1.5 rounded-full bg-emerald-400"
+            animate={{ opacity: [0.5, 1, 0.5] }}
+            transition={{ duration: 2, repeat: Infinity }}
           />
-          <span className="font-mono text-xs text-warm-500">
-            Online
-          </span>
+          <span className="text-[11px] font-medium tracking-wide text-emerald-400">Live</span>
         </div>
 
-        <div className="h-5 w-px bg-warm-700/20" />
-
         {user?.email && (
-          <span className="font-mono text-xs text-warm-600 hidden sm:block truncate max-w-[180px]">
+          <span className="hidden max-w-40 truncate text-[13px] text-slate-500 sm:block">
             {user.email}
           </span>
         )}
 
         <Button variant="ghost" size="sm" onClick={handleLogout}>
-          Logout
+          Sign out
         </Button>
       </div>
     </motion.nav>
@@ -84,21 +128,22 @@ function NavLink({ to, children, active }) {
     <Link
       to={to}
       className={[
-        'relative px-0 py-2 font-mono text-sm font-semibold transition-colors duration-200',
-        active ? 'text-accent-700' : 'text-warm-500 hover:text-warm-300',
+        'relative px-3 py-1.5 rounded-lg text-[14px] font-medium transition-all duration-200',
+        active
+          ? 'text-white bg-white/8'
+          : 'text-slate-400 hover:text-slate-200 hover:bg-white/5',
       ].join(' ')}
     >
       {children}
       <AnimatePresence>
         {active && (
           <motion.span
-            layoutId="nav-indicator"
-            className="absolute bottom-0 left-0 right-0 h-0.5 bg-accent-700"
-            initial={{ opacity: 0, scaleX: 0 }}
-            animate={{ opacity: 1, scaleX: 1 }}
-            exit={{ opacity: 0, scaleX: 0 }}
-            transition={{ duration: 0.3 }}
-            style={{ originX: 0 }}
+            layoutId="nav-pill"
+            className="absolute inset-0 rounded-lg bg-white/8 -z-10"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
           />
         )}
       </AnimatePresence>

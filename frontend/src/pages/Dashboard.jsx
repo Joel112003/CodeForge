@@ -6,17 +6,24 @@ import useAuthStore from '../store/authStore'
 import Navbar from '../components/layout/Navbar'
 import Badge from '../components/ui/Badge'
 import Button from '../components/ui/Button'
-import { SkeletonHistoryRows, SkeletonStatCards } from '../components/ui/Spinner'
+import { SkeletonHistoryRows, SkeletonStatCards } from '../components/ui/Skeleton'
 
 const fadeUp = {
-  initial: { opacity: 0, y: 12 },
+  initial: { opacity: 0, y: 10 },
   animate: { opacity: 1, y: 0 },
-  transition: { duration: 0.4 },
+  transition: { duration: 0.45, ease: 'easeOut' },
 }
 
 const stagger = {
-  animate: { transition: { staggerChildren: 0.08 } },
+  animate: { transition: { staggerChildren: 0.07 } },
 }
+
+// Plus icon
+const PlusIcon = () => (
+  <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+    <path d="M6 1v10M1 6h10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+  </svg>
+)
 
 export default function Dashboard() {
   const [history, setHistory] = useState([])
@@ -45,36 +52,48 @@ export default function Dashboard() {
   }
 
   const stats = [
-    { label: 'Total Runs', value: history.length },
-    { label: 'Completed', value: history.filter((h) => h.status === 'COMPLETED').length },
-    { label: 'Errors', value: history.filter((h) => h.status === 'ERROR').length },
+    { label: 'Total Runs',  value: history.length,                                             accent: false },
+    { label: 'Completed',   value: history.filter((h) => h.status === 'COMPLETED').length,     accent: true  },
+    { label: 'Errors',      value: history.filter((h) => h.status === 'ERROR').length,         accent: false },
   ]
 
   return (
-    <div className="min-h-screen bg-base-950 flex flex-col">
+    <div className="min-h-screen flex flex-col" style={{ background: '#0D0B09' }}>
       <Navbar />
 
-      <main className="relative flex-1 max-w-5xl mx-auto w-full px-6 lg:px-8 py-12">
+      <main className="relative flex-1 max-w-5xl mx-auto w-full px-6 lg:px-8 py-10">
 
-        {/* ── HEADER CARD ── */}
-        <motion.div
-          {...fadeUp}
-          className="border border-warm-700/30 bg-warm-900/10 mb-8 lg:mb-12"
-        >
-          <div className="h-px bg-warm-700/20" />
-          <div className="px-6 lg:px-8 py-8 flex items-start lg:items-center justify-between gap-6 flex-wrap">
+        {/* Subtle grid texture */}
+        <div
+          className="fixed inset-0 pointer-events-none -z-10 opacity-[0.015]"
+          style={{
+            backgroundImage: `
+              linear-gradient(#E07B39 1px, transparent 1px),
+              linear-gradient(90deg, #E07B39 1px, transparent 1px)
+            `,
+            backgroundSize: '80px 80px',
+          }}
+        />
+
+        {/* ── HEADER ── */}
+        <motion.div {...fadeUp} className="border border-[#2A2620] bg-[#0F0D0B] mb-8">
+          {/* Top accent line */}
+          <div className="h-px" style={{ background: 'linear-gradient(90deg, transparent, rgba(224,123,57,0.4), transparent)' }} />
+          
+          <div className="px-6 lg:px-8 py-7 flex items-start lg:items-center justify-between gap-6 flex-wrap">
             <div>
-              <div className="flex items-center gap-3 mb-2">
-                <span className="font-mono text-xs text-warm-600 tracking-wide">CODEFORGE</span>
-                <span className="text-warm-700/40">/</span>
-                <span className="font-mono text-xs text-warm-600 tracking-wide">DASHBOARD</span>
+              <div className="flex items-center gap-2 mb-3">
+                <span className="font-mono text-[10px] tracking-[0.16em] uppercase text-[#4A4540]">CodeForge</span>
+                <span className="text-[#2A2620]">/</span>
+                <span className="font-mono text-[10px] tracking-[0.16em] uppercase text-[#4A4540]">Dashboard</span>
               </div>
-              <h1 className="font-display text-3xl lg:text-4xl font-semibold text-warm-100 mb-3">
+              <h1 className="font-mono text-2xl lg:text-3xl font-bold tracking-tight text-[#E8DDD0] mb-2">
                 Command Center
               </h1>
               {user?.email && (
-                <p className="font-mono text-sm text-warm-600">
-                  Signed in as <span className="text-warm-500">{user.email}</span>
+                <p className="font-mono text-xs text-[#5A5550]">
+                  <span className="text-[#3A3530]">◆ </span>
+                  {user.email}
                 </p>
               )}
             </div>
@@ -84,17 +103,18 @@ export default function Dashboard() {
               loading={creating}
               variant="primary"
               size="lg"
+              icon={!creating && <PlusIcon />}
             >
-              {creating ? 'Creating…' : '+ New Session'}
+              {creating ? 'Creating…' : 'New Session'}
             </Button>
           </div>
         </motion.div>
 
-        {/* ── STATS GRID ── */}
+        {/* ── STATS ── */}
         <AnimatePresence mode="wait">
           {loading ? (
-            <motion.div key="stats-skeleton" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-              <SkeletonStatCards />
+            <motion.div key="s-skel" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+              <SkeletonStatCards loading />
             </motion.div>
           ) : history.length > 0 ? (
             <motion.div
@@ -102,7 +122,7 @@ export default function Dashboard() {
               variants={stagger}
               initial="initial"
               animate="animate"
-              className="grid grid-cols-3 gap-4 mb-8 lg:mb-12"
+              className="grid grid-cols-3 gap-3 mb-8"
             >
               {stats.map((s) => (
                 <motion.div key={s.label} variants={fadeUp}>
@@ -117,18 +137,18 @@ export default function Dashboard() {
         <motion.div
           {...fadeUp}
           transition={{ ...fadeUp.transition, delay: 0.1 }}
-          className="border border-warm-700/30 bg-warm-900/10"
+          className="border border-[#2A2620] bg-[#0F0D0B]"
         >
-          {/* Header */}
-          <div className="border-b border-warm-700/20 px-6 lg:px-8 py-4 flex items-center justify-between">
+          {/* Panel header */}
+          <div className="border-b border-[#1E1C18] px-6 lg:px-8 py-4 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <motion.span
-                className="w-1.5 h-1.5 rounded-full bg-accent-700"
-                animate={{ opacity: [0.6, 1, 0.6] }}
+                className="w-1.5 h-1.5 rounded-full bg-[#E07B39]"
+                animate={{ opacity: [0.5, 1, 0.5] }}
                 transition={{ duration: 2.5, repeat: Infinity }}
               />
-              <span className="font-mono text-sm text-warm-600 tracking-wide">
-                EXECUTION HISTORY
+              <span className="font-mono text-[10px] tracking-[0.16em] uppercase text-[#5A5550]">
+                Execution History
               </span>
             </div>
             <AnimatePresence>
@@ -136,7 +156,7 @@ export default function Dashboard() {
                 <motion.span
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  className="font-mono text-xs text-warm-600"
+                  className="font-mono text-[10px] text-[#3A3530]"
                 >
                   {history.length} run{history.length !== 1 ? 's' : ''}
                 </motion.span>
@@ -144,11 +164,11 @@ export default function Dashboard() {
             </AnimatePresence>
           </div>
 
-          {/* Content */}
+          {/* Panel content */}
           <AnimatePresence mode="wait">
             {loading ? (
               <motion.div key="skeleton" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                <SkeletonHistoryRows count={6} />
+                <SkeletonHistoryRows count={6} loading />
               </motion.div>
             ) : history.length === 0 ? (
               <EmptyState key="empty" onNew={handleNewSession} />
@@ -158,7 +178,7 @@ export default function Dashboard() {
                 variants={stagger}
                 initial="initial"
                 animate="animate"
-                className="divide-y divide-warm-700/20"
+                className="divide-y divide-[#1A1816]"
               >
                 {history.map((item, idx) => (
                   <motion.div key={item.id} variants={fadeUp}>
@@ -183,42 +203,38 @@ function HistoryRow({ item, index, onClick }) {
   return (
     <motion.div
       onClick={onClick}
-      className="group relative px-6 lg:px-8 py-4 flex items-center justify-between gap-4 cursor-pointer border-b border-warm-700/10 last:border-b-0"
-      whileHover={{ backgroundColor: 'rgba(140, 132, 120, 0.03)' }}
-      transition={{ duration: 0.15 }}
+      className="group relative px-6 lg:px-8 py-3.5 flex items-center gap-4 cursor-pointer"
+      whileHover={{ backgroundColor: 'rgba(224,123,57,0.025)' }}
+      transition={{ duration: 0.12 }}
     >
-      {/* Left accent bar on hover */}
+      {/* Left accent */}
       <motion.span
-        className="absolute left-0 top-0 bottom-0 w-0.5 bg-accent-700"
+        className="absolute left-0 top-2 bottom-2 w-0.5"
+        style={{ background: 'linear-gradient(180deg, #E07B39, #F09A5A)' }}
         initial={{ scaleY: 0, opacity: 0 }}
         whileHover={{ scaleY: 1, opacity: 1 }}
-        transition={{ duration: 0.2 }}
+        transition={{ duration: 0.18 }}
       />
 
       {/* Index */}
-      <span className="font-mono text-xs text-warm-700 w-6 shrink-0 tracking-wider">
+      <span className="font-mono text-[10px] text-[#3A3530] w-5 shrink-0 tabular-nums">
         {String(index + 1).padStart(2, '0')}
       </span>
 
-      {/* Language badge */}
-      <span className={[
-        'font-mono text-xs px-2 py-1 shrink-0 border rounded-sm font-semibold',
-        item.language === 'javascript'
-          ? 'bg-warm-800/30 text-warm-400 border-warm-700/40'
-          : 'bg-warm-700/30 text-warm-500 border-warm-700/40',
-      ].join(' ')}>
+      {/* Language */}
+      <span className="font-mono text-[10px] px-2 py-1 shrink-0 border border-[#2A2620] text-[#6A6460] tracking-wide uppercase">
         {item.language}
       </span>
 
       {/* Code preview */}
-      <span className="font-mono text-xs text-warm-600 group-hover:text-warm-500 transition-colors duration-200 truncate flex-1 min-w-0">
-        {item.code?.split('\n')[0] || '— no source —'}
+      <span className="font-mono text-xs text-[#4A4540] group-hover:text-[#6A6460] transition-colors duration-200 truncate flex-1 min-w-0">
+        {item.code?.split('\n')[0] || '— empty —'}
       </span>
 
-      {/* Right meta */}
+      {/* Meta */}
       <div className="flex items-center gap-4 shrink-0">
         {item.duration_ms && (
-          <span className="font-mono text-xs text-warm-700 hidden sm:block tabular-nums">
+          <span className="font-mono text-[10px] text-[#3A3530] hidden sm:block tabular-nums">
             {item.duration_ms}ms
           </span>
         )}
@@ -229,18 +245,23 @@ function HistoryRow({ item, index, onClick }) {
 }
 
 // ─── Stat card ────────────────────────────────────────────────────────────────
-function StatCard({ label, value }) {
+function StatCard({ label, value, accent }) {
   return (
-    <div className="border border-warm-700/30 bg-warm-900/10 px-6 py-5">
+    <div className="border border-[#2A2620] bg-[#0F0D0B] px-5 py-5 relative overflow-hidden group">
+      {/* Corner accent */}
+      <div className="absolute top-0 right-0 w-8 h-8 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+        style={{ background: 'linear-gradient(225deg, rgba(224,123,57,0.08), transparent)' }}
+      />
       <motion.div
-        className="font-display font-semibold text-3xl text-accent-700 mb-2"
-        initial={{ opacity: 0, y: 8 }}
+        className="font-mono font-black text-3xl mb-2 tabular-nums"
+        style={{ color: accent ? '#E07B39' : '#C4B896' }}
+        initial={{ opacity: 0, y: 6 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
+        transition={{ duration: 0.4 }}
       >
         {value}
       </motion.div>
-      <div className="font-mono text-xs text-warm-600 uppercase tracking-wide">
+      <div className="font-mono text-[10px] tracking-[0.14em] uppercase text-[#4A4540]">
         {label}
       </div>
     </div>
@@ -251,32 +272,34 @@ function StatCard({ label, value }) {
 function EmptyState({ onNew }) {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 10 }}
+      initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4 }}
       className="flex flex-col items-center justify-center py-20 gap-8"
     >
-      {/* Terminal icon */}
-      <div className="relative w-12 h-12 border border-warm-700/40 flex items-center justify-center">
-        <span className="font-mono text-lg text-warm-600">{'>'}</span>
+      <div className="relative w-14 h-14 border border-[#2A2620] flex items-center justify-center"
+        style={{ background: '#0F0D0B' }}
+      >
+        <span className="font-mono text-xl text-[#3A3530]">{'>'}</span>
         <motion.span
-          className="absolute bottom-1.5 right-1.5 w-1.5 h-2 bg-warm-600/40"
+          className="absolute bottom-2 right-2.5 w-1.5 h-2.5"
+          style={{ background: '#2A2620' }}
           animate={{ opacity: [0, 1, 0] }}
-          transition={{ duration: 1.2, repeat: Infinity }}
+          transition={{ duration: 1.1, repeat: Infinity }}
         />
       </div>
 
       <div className="text-center">
-        <p className="font-mono text-sm tracking-wide text-warm-600 mb-2 uppercase">
+        <p className="font-mono text-[10px] tracking-[0.16em] uppercase text-[#4A4540] mb-2">
           No Executions Yet
         </p>
-        <p className="font-body text-warm-500 max-w-xs">
-          Create a new session to start running code in isolated containers.
+        <p className="font-mono text-xs text-[#3A3530] max-w-xs">
+          Create a session to run code in isolated containers.
         </p>
       </div>
 
-      <Button variant="ghost" size="md" onClick={onNew}>
-        Create First Session
+      <Button variant="outline" size="md" onClick={onNew} icon={<PlusIcon />}>
+        First Session
       </Button>
     </motion.div>
   )

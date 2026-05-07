@@ -63,7 +63,7 @@ export default function setupSocket(io) {
     });
 
     // execution handler
-    socket.on("run_code", async ({ language, code, roomId }, callback) => {
+    socket.on("run_code", async ({ language, code, roomId, userId }, callback) => {
       const normalizedLanguage = normalizeLanguage(language);
 
       if (!SUPPORTED_LANGUAGES.includes(normalizedLanguage)) {
@@ -75,12 +75,17 @@ export default function setupSocket(io) {
       if (callback) callback("QUEUED");
       socket.emit("status", "QUEUED");
 
+      if (userId) {
+        socket.data.userId = userId;
+      }
+
       //add to queue instead of running directly
       await executionQueue.add("run", {
         language: normalizedLanguage,
         code,
         socketId: socket.id,
         roomId,
+        userId: socket.data.userId,
       });
     });
 

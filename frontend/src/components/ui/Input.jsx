@@ -1,75 +1,118 @@
-import { useState } from 'react'
+import { useState, useId } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { AlertCircle, Info } from 'lucide-react'
 
-export default function Input({ label, error, hint, className = '', ...props }) {
+const ACCENT      = '#C04A1A'
+const ACCENT_RING = 'rgba(192,74,26,0.15)'
+const ERROR       = '#B91C1C'
+const ERROR_RING  = 'rgba(185,28,28,0.1)'
+
+export default function Input({
+  label,
+  error,
+  hint,
+  className = '',
+  leftIcon,
+  rightIcon,
+  ...props
+}) {
+  const id = useId()
   const [focused, setFocused] = useState(false)
-  const [filled, setFilled] = useState(false)
+
+  const isError = !!error
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-1">
+
       {label && (
-        <motion.label
-          animate={{ 
-            y: focused || filled ? -20 : 0,
-            scale: focused || filled ? 0.85 : 1,
-            color: error ? '#C4622D' : focused ? '#D4A843' : '#8C8478',
+        <label
+          htmlFor={id}
+          style={{
+            fontFamily: "'Spectral', serif",
+            fontSize: '11px',
+            fontWeight: 600,
+            letterSpacing: '0.1em',
+            textTransform: 'uppercase',
+            color: isError ? ERROR : focused ? ACCENT : '#8C7E6A',
+            transition: 'color 0.18s',
           }}
-          transition={{ duration: 0.2 }}
-          className="font-display text-sm font-semibold origin-left cursor-text"
         >
           {label}
-        </motion.label>
+        </label>
       )}
 
-      <div className="relative">
+      {/* Wrapper with left accent bar */}
+      <div
+        style={{
+          position: 'relative',
+          display: 'flex',
+          alignItems: 'center',
+          background: focused ? '#FDFAF4' : '#FAF7F0',
+          border: `1px solid ${isError ? ERROR : focused ? ACCENT : '#D4C9B0'}`,
+          borderLeft: `3px solid ${isError ? ERROR : focused ? ACCENT : '#D4C9B0'}`,
+          height: '48px',
+          transition: 'all 0.18s ease',
+          boxShadow: isError
+            ? `0 0 0 3px ${ERROR_RING}`
+            : focused
+            ? `0 0 0 3px ${ACCENT_RING}`
+            : '0 1px 3px rgba(0,0,0,0.05)',
+        }}
+      >
+        {leftIcon && (
+          <span
+            style={{
+              paddingLeft: '14px',
+              flexShrink: 0,
+              color: isError ? ERROR : focused ? ACCENT : '#B0A090',
+              transition: 'color 0.18s',
+              display: 'flex',
+            }}
+          >
+            {leftIcon}
+          </span>
+        )}
+
         <input
+          id={id}
           {...props}
-          onFocus={(e) => { 
-            setFocused(true)
-            props.onFocus?.(e) 
+          onFocus={e => { setFocused(true); props.onFocus?.(e) }}
+          onBlur={e  => { setFocused(false); props.onBlur?.(e) }}
+          onChange={e => props.onChange?.(e)}
+          style={{
+            flex: 1,
+            height: '100%',
+            background: 'transparent',
+            outline: 'none',
+            fontFamily: "'DM Mono', monospace",
+            fontSize: '13px',
+            letterSpacing: '0.02em',
+            color: '#1A1208',
+            caretColor: ACCENT,
+            paddingLeft: leftIcon ? '10px' : '14px',
+            paddingRight: rightIcon ? '4px' : '14px',
           }}
-          onBlur={(e) => { 
-            setFocused(false)
-            setFilled(!!e.target.value)
-            props.onBlur?.(e) 
-          }}
-          onChange={(e) => {
-            setFilled(!!e.target.value)
-            props.onChange?.(e)
-          }}
-          className={[
-            'w-full bg-transparent',
-            'pb-2 px-0',
-            'font-body text-body-md text-warm-100 placeholder-warm-500',
-            'outline-none transition-smooth',
-            'border-b border-warm-500',
-            error
-              ? 'border-b-accent-700 focus:border-b-accent-700'
-              : 'focus:border-b-accent-700 focus:border-b-2',
-            className,
-          ].join(' ')}
+          className={['placeholder:text-stone-300', className].join(' ')}
         />
 
-        {/* Bottom border animation */}
-        <motion.span
-          className="absolute bottom-0 left-0 h-0.5 bg-accent-700 pointer-events-none"
-          initial={{ scaleX: 0 }}
-          animate={{ scaleX: focused ? 1 : 0 }}
-          transition={{ duration: 0.3 }}
-          style={{ originX: 0 }}
-        />
+        {rightIcon && (
+          <span style={{ paddingRight: '12px', flexShrink: 0, color: '#B0A090', display: 'flex' }}>
+            {rightIcon}
+          </span>
+        )}
       </div>
 
       <AnimatePresence mode="wait">
         {error ? (
           <motion.p
-            key="error"
-            initial={{ opacity: 0, y: -4 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -4 }}
-            transition={{ duration: 0.2 }}
-            className="font-mono text-xs text-accent-700"
+            key="err"
+            initial={{ opacity: 0, y: -3, height: 0 }}
+            animate={{ opacity: 1, y: 0, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.18 }}
+            style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '11px', color: ERROR, marginTop: '2px' }}
           >
+            <AlertCircle size={11} style={{ flexShrink: 0 }} />
             {error}
           </motion.p>
         ) : hint ? (
@@ -78,8 +121,9 @@ export default function Input({ label, error, hint, className = '', ...props }) 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="font-mono text-xs text-warm-600"
+            style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '11px', color: '#A0917E', marginTop: '2px' }}
           >
+            <Info size={11} style={{ flexShrink: 0 }} />
             {hint}
           </motion.p>
         ) : null}
