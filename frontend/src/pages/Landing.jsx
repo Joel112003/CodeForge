@@ -26,7 +26,7 @@ const FEATURES = [
   {
     index: "01",
     title: "Isolated Execution",
-    desc: "Every run gets its own Docker container. No interference, no data leaks. Hermetic by design.",
+    desc: "Every run executes in a sandboxed process with a strict timeout. No interference, no data leaks. Hermetic by design.",
   },
   {
     index: "02",
@@ -87,7 +87,7 @@ function GlowingStar({ size = 16, delay = 0 }) {
 }
 
 const MARQUEE_ITEMS = [
-  "Isolated Docker Containers",
+  "Sandboxed Process Execution",
   "Real-time Collaboration",
   "Live Output Streaming",
   "Secure Sandboxed Execution",
@@ -187,7 +187,7 @@ export default function Landing() {
               variants={rise}
               className="max-w-95 font-['Spectral'] text-[1.05rem] italic leading-[1.85] text-[#7A6E5A]"
             >
-              Execute in isolated Docker containers. Collaborate in real time. Watch
+              Execute code in a secure sandboxed process. Collaborate in real time. Watch
               output stream live — right in your browser.
             </motion.p>
 
@@ -333,7 +333,7 @@ export default function Landing() {
 
               <div className="mt-3 flex gap-2">
                 {[
-                  { label: "Container", val: "node:20-alpine" },
+                  { label: "Runtime", val: "node:20 / python3" },
                   { label: "Memory", val: "128 MB" },
                 ].map(({ label, val }) => (
                   <div
