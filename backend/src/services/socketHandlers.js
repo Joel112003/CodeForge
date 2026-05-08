@@ -49,7 +49,7 @@ export default function setupSocket(io) {
     });
 
     // execution handler
-    socket.on("run_code", async ({ language, code, roomId }, callback) => {
+    socket.on("run_code", async ({ language, code, roomId, sessionId }, callback) => {
       const normalizedLanguage = normalizeLanguage(language);
 
       if (!SUPPORTED_LANGUAGES.includes(normalizedLanguage)) {
@@ -59,15 +59,20 @@ export default function setupSocket(io) {
       }
 
       if (callback) callback("QUEUED");
-      socket.emit("status", "QUEUED");
+      // Echo sessionId back so the client can filter its own run
+      socket.emit("status", { status: "QUEUED", sessionId });
+
+      // Only use socket.data.roomId for collaborative rooms (never for guest runs)
+      const resolvedRoomId = roomId || (socket.data.userId ? socket.data.roomId : null);
 
       // Always use socket.data.userId (set at join_room) — never trust client-supplied userId
       await executionQueue.add("run", {
         language: normalizedLanguage,
         code,
         socketId: socket.id,
-        roomId: roomId || socket.data.roomId,
+        roomId: resolvedRoomId,
         userId: socket.data.userId,   // UUID from auth, safe for DB
+        sessionId,                    // passed through so worker can tag all events
       });
     });
 

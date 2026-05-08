@@ -17,7 +17,7 @@ export function setIo(io) {
 const worker = new Worker(
   "execution",
   async (job) => {
-    const { language, code, socketId, roomId, userId } = job.data;
+    const { language, code, socketId, roomId, userId, sessionId } = job.data;
     const normalizedLanguage = normalizeLanguage(language);
 
     // Resolve the socket for the requesting client
@@ -45,12 +45,12 @@ const worker = new Worker(
 
     try {
       // Tell the client execution has started
-      socket?.emit("status", "RUNNING");
+      socket?.emit("status", { status: "RUNNING", sessionId });
 
       await executeCode(normalizedLanguage, code, (chunk, type) => {
         outputChunks.push(chunk);
 
-        const payload = { output: chunk, data: chunk, type };
+        const payload = { output: chunk, data: chunk, type, sessionId };
 
         // Send to the requesting client
         socket?.emit("output", payload);
@@ -72,7 +72,7 @@ const worker = new Worker(
         );
       }
 
-      socket?.emit("status", "COMPLETED");
+      socket?.emit("status", { status: "COMPLETED", sessionId });
     } catch (err) {
       if (executionId) {
         await pool.query(
@@ -80,8 +80,8 @@ const worker = new Worker(
           [err.message, executionId],
         );
       }
-      socket?.emit("status", "ERROR");
-      socket?.emit("output", { output: err.message, data: err.message, type: "stderr" });
+      socket?.emit("status", { status: "ERROR", sessionId });
+      socket?.emit("output", { output: err.message, data: err.message, type: "stderr", sessionId });
     }
   },
   {
