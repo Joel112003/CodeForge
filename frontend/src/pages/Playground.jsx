@@ -137,7 +137,7 @@ export default function Playground() {
 
         {/* ── Terminal pane ── */}
         <div
-          className="lg:block"
+          className="terminal-pane"
           style={{
             /* Mobile: fixed 200px height; Desktop: 38% width */
             height: 200,
@@ -152,7 +152,7 @@ export default function Playground() {
               .terminal-pane { width: 38% !important; height: 100% !important; flex-shrink: 0; }
             }
           `}</style>
-          <div className="terminal-pane h-full">
+          <div style={{ height: '100%' }}>
             <Terminal lines={outputLines} status={status} />
           </div>
         </div>
