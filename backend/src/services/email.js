@@ -1,14 +1,23 @@
 import nodemailer from "nodemailer";
 
+const EMAIL_TIMEOUT_MS = Number(process.env.EMAIL_TIMEOUT_MS || 10000);
+
 const transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASS, // Gmail App Password
   },
+  connectionTimeout: EMAIL_TIMEOUT_MS,
+  greetingTimeout: EMAIL_TIMEOUT_MS,
+  socketTimeout: EMAIL_TIMEOUT_MS,
 });
 
 export async function sendPasswordResetEmail(toEmail, resetLink) {
+  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+    throw new Error("Email credentials are not configured");
+  }
+
   await transporter.sendMail({
     from: `"CodeForge" <${process.env.EMAIL_USER}>`,
     to: toEmail,
