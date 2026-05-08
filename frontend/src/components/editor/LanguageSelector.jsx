@@ -125,7 +125,7 @@ export default function LanguageSelector({ value, onChange }) {
             border: `1px solid ${T.border}`,
             borderTop: `2px solid ${T.accent}`,
             boxShadow: T.menuShadow,
-            zIndex: 1000,
+            zIndex: 9999,
             overflow: 'hidden',
             animation: 'cf-dropdown-in 0.15s ease',
           }}

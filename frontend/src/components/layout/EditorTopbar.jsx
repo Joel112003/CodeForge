@@ -135,13 +135,14 @@ export default function EditorTopbar({ left, right }) {
   return (
     <div
       style={{
-        height: 64, zIndex: 2, position: 'relative',
+        height: 64, zIndex: 50, position: 'relative',
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         background: T.panel,
         borderBottom: `1px solid ${T.rule}`,
         padding: '0 20px',
         fontFamily: "'DM Mono', monospace",
         flexShrink: 0,
+        overflow: 'visible',
       }}
     >
       {/* top accent gradient line */}
