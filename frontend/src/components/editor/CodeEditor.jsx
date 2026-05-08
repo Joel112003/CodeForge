@@ -1,4 +1,3 @@
-// src/components/editor/CodeEditor.jsx
 import MonacoEditor from '@monaco-editor/react'
 
 export default function CodeEditor({ code, language, onChange, readOnly = false }) {

@@ -13,7 +13,6 @@ export default function setupSocket(io) {
   io.on("connection", (socket) => {
     console.log("New client connected: " + socket.id);
 
-    // rooms
     socket.on("join_room", async ({ roomId, userId, displayName }, callback) => {
       console.log("[join_room] request", { socketId: socket.id, roomId, userId });
 
@@ -48,7 +47,6 @@ export default function setupSocket(io) {
       if (callback) callback("JOINED");
     });
 
-    // execution handler
     socket.on("run_code", async ({ language, code, roomId, sessionId }, callback) => {
       const normalizedLanguage = normalizeLanguage(language);
 
@@ -76,7 +74,6 @@ export default function setupSocket(io) {
       });
     });
 
-    // live code sync, when user types the broadcast to everyone else in the room
     socket.on("code_change", async ({ roomId, code, language }, callback) => {
       const normalizedLanguage = normalizeLanguage(language);
       const targetRoomId = roomId || socket.data.roomId;
@@ -116,7 +113,6 @@ export default function setupSocket(io) {
       if (callback) callback("SYNCED");
     });
 
-    //disconnect handler
     socket.on("disconnect", async () => {
       const { roomId, userId, displayName } = socket.data;
       if (roomId && userId) {

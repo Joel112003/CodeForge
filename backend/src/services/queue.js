@@ -31,7 +31,6 @@ const worker = new Worker(
     let executionId = null;
     const startTime = Date.now();
 
-    // Persist initial record for authenticated users only
     if (!isGuest) {
       const execution = await pool.query(
         `INSERT INTO executions (user_id, language, code, status)
@@ -44,7 +43,6 @@ const worker = new Worker(
     const outputChunks = [];
 
     try {
-      // Tell the client execution has started
       socket?.emit("status", { status: "RUNNING", sessionId });
 
       await executeCode(normalizedLanguage, code, (chunk, type) => {
@@ -55,7 +53,6 @@ const worker = new Worker(
         // Send to the requesting client
         socket?.emit("output", payload);
 
-        // Broadcast to everyone else in the room (collaborative editing)
         if (roomId && socket) {
           socket.to(roomId).emit("output", payload);
         }

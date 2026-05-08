@@ -55,29 +55,31 @@ function GlowingStar({ size = 16, delay = 0 }) {
       viewBox="0 0 24 24"
       fill="none"
       animate={{
-        opacity: [0.4, 1, 0.4],
-        scale: [0.9, 1.1, 0.9],
+        opacity: [0.5, 1, 0.5],
+        scale: [0.92, 1.08, 0.92],
+        rotate: [0, 15, 0],
         filter: [
-          'drop-shadow(0 0 3px rgba(192,74,26,0.3))',
-          'drop-shadow(0 0 8px rgba(192,74,26,0.6))',
-          'drop-shadow(0 0 3px rgba(192,74,26,0.3))',
+          'drop-shadow(0 0 2px rgba(192,74,26,0.3))',
+          'drop-shadow(0 0 7px rgba(192,74,26,0.7))',
+          'drop-shadow(0 0 2px rgba(192,74,26,0.3))',
         ],
       }}
-      transition={{ duration: 2.5, repeat: Infinity, delay, ease: 'easeInOut' }}
+      transition={{ duration: 2.8, repeat: Infinity, delay, ease: 'easeInOut' }}
       style={{ flexShrink: 0 }}
     >
+      {/* 4-pointed sparkle / diamond star */}
       <path
-        d="M12 2L14.09 8.26L20.18 8.64L15.64 12.74L17.09 19.02L12 15.77L6.91 19.02L8.36 12.74L3.82 8.64L9.91 8.26L12 2Z"
+        d="M12 2C12 2 13.2 8.8 14.8 10.2C16.4 11.6 22 12 22 12C22 12 16.4 12.4 14.8 13.8C13.2 15.2 12 22 12 22C12 22 10.8 15.2 9.2 13.8C7.6 12.4 2 12 2 12C2 12 7.6 11.6 9.2 10.2C10.8 8.8 12 2 12 2Z"
         fill="#C04A1A"
         fillOpacity="0.9"
       />
       <path
-        d="M12 2L14.09 8.26L20.18 8.64L15.64 12.74L17.09 19.02L12 15.77L6.91 19.02L8.36 12.74L3.82 8.64L9.91 8.26L12 2Z"
-        fill="url(#starGlow)"
-        fillOpacity="0.5"
+        d="M12 2C12 2 13.2 8.8 14.8 10.2C16.4 11.6 22 12 22 12C22 12 16.4 12.4 14.8 13.8C13.2 15.2 12 22 12 22C12 22 10.8 15.2 9.2 13.8C7.6 12.4 2 12 2 12C2 12 7.6 11.6 9.2 10.2C10.8 8.8 12 2 12 2Z"
+        fill="url(#sparkleGlow)"
+        fillOpacity="0.45"
       />
       <defs>
-        <radialGradient id="starGlow" cx="50%" cy="50%" r="50%">
+        <radialGradient id="sparkleGlow" cx="50%" cy="50%" r="50%">
           <stop offset="0%" stopColor="#FFB088" />
           <stop offset="100%" stopColor="#C04A1A" stopOpacity="0" />
         </radialGradient>
@@ -150,7 +152,7 @@ export default function Landing() {
       <div className="relative flex min-h-screen flex-col overflow-x-hidden bg-[#F8F4ED] font-['DM_Mono']">
         <Navbar variant="public" />
 
-        {/* ═══════════════════════════════════════ HERO ══ */}
+        {/* HERO */}
         <motion.section
           id="hero"
           ref={heroRef}

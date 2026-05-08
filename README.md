@@ -15,9 +15,6 @@
 - [Project Structure](#project-structure)
 - [Deployment](#deployment)
 - [Getting Started (Local)](#getting-started-local)
-  - [Prerequisites](#prerequisites)
-  - [Environment Variables](#environment-variables)
-  - [Running Locally](#running-locally)
 - [API Reference](#api-reference)
 - [WebSocket Events](#websocket-events)
 - [Database Schema](#database-schema)
@@ -34,8 +31,8 @@ CodeForge is a SaaS-grade collaborative coding environment. Users can:
 - **Run code** in a sandboxed process (JavaScript, Python) with real-time terminal output streamed back via WebSockets.
 - **Create rooms** and invite others to collaborate with live code sync — every keystroke is broadcast to all session members instantly.
 - **Join sessions** from a shared link or room code, see who's online, and watch output as it streams.
-- **Track history** — all executions are persisted to PostgreSQL with language, code, output, duration, and status.
 - **Use the Playground** as a guest — run code without signing up, executions are not saved.
+- **Reset passwords** securely via time-limited email tokens (10-minute expiry, single-use).
 
 ---
 
@@ -76,13 +73,14 @@ CodeForge is a SaaS-grade collaborative coding environment. Users can:
 ### Request lifecycle — code execution
 
 ```
-1. Client emits  run_code  { language, code, roomId }
-2. Socket handler validates language → emits status: QUEUED
-3. Job added to BullMQ queue (language, code, socketId, roomId, userId)
+1. Client emits  run_code  { language, code, roomId, sessionId }
+2. Socket handler validates language → emits status: { status: QUEUED, sessionId }
+3. Job added to BullMQ queue (language, code, socketId, roomId, userId, sessionId)
 4. Worker picks up job → spawns child_process (node/python3) with 10s timeout
-5. Stdout/stderr chunks stream back via  socket.emit("output", chunk)
-6. On completion → status: COMPLETED + DB record updated
-7. All room members receive output in real time via  socket.to(roomId)
+5. Stdout/stderr chunks stream back via  socket.emit("output", { ...chunk, sessionId })
+6. Client filters events by sessionId — prevents cross-contamination between tabs/sessions
+7. On completion → status: COMPLETED + DB record updated
+8. All room members receive output in real time via  socket.to(roomId)
 ```
 
 ---
@@ -92,15 +90,17 @@ CodeForge is a SaaS-grade collaborative coding environment. Users can:
 | Feature | Detail |
 |---|---|
 | **Sandboxed Execution** | Each run spawns a fresh child process. 10s timeout, streamed stdout/stderr |
+| **Session-scoped Output** | Every run tagged with a `sessionId` — output events are strictly scoped, no cross-contamination between Playground and Editor |
 | **Real-time Collab** | Socket.IO rooms — code changes broadcast to every member via `code_updated` event |
 | **Job Queue** | BullMQ + Redis — runs are queued, not blocking. Concurrency = 5 workers |
-| **Execution History** | PostgreSQL stores every run: language, code, output, duration, status |
+| **Password Reset** | Email-based flow via SendGrid HTTP API (SMTP-free, works on Render). 10-minute token expiry, single-use |
 | **Guest Mode** | `/playground` — no auth required, runs not saved, rooms unavailable |
 | **Join by Link** | Share `/editor/:roomId` URL or 8-char room code. Room expires in 24 hours |
 | **Member Presence** | Live member list — join/leave events update all clients instantly |
 | **CSRF Protection** | Double-submit cookie pattern on all non-GET API routes |
 | **Rate Limiting** | `apiLimiter` (global) + `executionLimiter` (20 exec/hour per IP) |
 | **Refresh Tokens** | Rotating refresh token strategy — access tokens expire in 1hr, auto-refreshed silently |
+| **DB Resilience** | Pool error handler prevents 57P01 crash. `idleTimeoutMillis: 10000` recycles connections before managed Postgres kills them |
 
 ---
 
@@ -118,7 +118,6 @@ CodeForge is a SaaS-grade collaborative coding environment. Users can:
 | Monaco Editor | 4 | Code editor (VS Code engine) |
 | Socket.IO Client | 4 | Real-time WebSocket connection |
 | Axios | 1 | HTTP client with CSRF header injection |
-| boneyard-js | 1.8 | Form schema registry |
 | Tailwind CSS | 4 | Utility classes (layout only) |
 
 ### Backend
@@ -144,6 +143,7 @@ CodeForge is a SaaS-grade collaborative coding environment. Users can:
 | Frontend | [Vercel](https://vercel.com) | Static site + SPA routing |
 | PostgreSQL | [Neon.tech](https://neon.tech) | Serverless Postgres (free tier) |
 | Redis | [Upstash](https://upstash.com) | Serverless Redis (BullMQ + room state) |
+| Email | [SendGrid](https://sendgrid.com) | Transactional email via HTTP API (SMTP-free) |
 
 ---
 
@@ -156,77 +156,76 @@ CodeExecutionEngine/
 │       ├── bones/                  # boneyard-js form schemas + registry
 │       ├── components/
 │       │   ├── editor/
-│       │   │   ├── CodeEditor.jsx      # Monaco wrapper
-│       │   │   └── LanguageSelector.jsx
+│       │   │   ├── CodeEditor.jsx          # Monaco wrapper
+│       │   │   └── LanguageSelector.jsx    # Custom dropdown (not native select)
 │       │   ├── layout/
 │       │   │   ├── EditorTopbar.jsx
 │       │   │   ├── Navbar.jsx
 │       │   │   └── ProtectedRoute.jsx
 │       │   ├── room/
 │       │   │   ├── JoinRoomModal.jsx
-│       │   │   └── MemberList.jsx      # Live member presence panel
+│       │   │   └── MemberList.jsx          # Live member presence panel
 │       │   ├── terminal/
-│       │   │   └── Terminal.jsx        # Output stream renderer
+│       │   │   └── Terminal.jsx            # Output stream renderer
 │       │   └── ui/
-│       │       ├── Badge.jsx           # Status badge (IDLE/RUNNING/etc)
+│       │       ├── Badge.jsx               # Status badge (IDLE/RUNNING/etc)
 │       │       ├── Button.jsx
-│       │       ├── Skeleton.jsx        # Shimmer loading states
-│       │       └── Toast.jsx           # Glassmorphic toast system
+│       │       ├── Skeleton.jsx            # Shimmer loading states
+│       │       └── Toast.jsx               # Dark-theme toast system
 │       ├── config/
-│       │   └── constants.js            # API_URL, LANGUAGES, DEFAULT_CODE
+│       │   └── constants.js                # API_URL, LANGUAGES, DEFAULT_CODE
 │       ├── hooks/
-│       │   └── useSocket.js            # Socket.IO hook (stale-closure safe)
+│       │   └── useSocket.js                # Socket.IO hook with sessionId scoping
 │       ├── pages/
-│       │   ├── Dashboard.jsx
-│       │   ├── Editor.jsx              # Collaborative code editor
-│       │   ├── History.jsx
+│       │   ├── Dashboard.jsx               # Launch hub (New/Join/Playground)
+│       │   ├── Editor.jsx                  # Collaborative code editor
+│       │   ├── ForgotPassword.jsx
 │       │   ├── Landing.jsx
 │       │   ├── Login.jsx
-│       │   ├── Playground.jsx          # Guest mode editor
-│       │   └── Register.jsx
+│       │   ├── Playground.jsx              # Guest mode editor
+│       │   ├── Register.jsx
+│       │   └── ResetPassword.jsx
 │       ├── services/
-│       │   └── api.js                  # Axios instance + interceptors + all API calls
+│       │   └── api.js                      # Axios instance + interceptors + all API calls
 │       ├── store/
-│       │   ├── authStore.js            # Zustand auth state
-│       │   └── toastStore.js           # Zustand toast queue
+│       │   ├── authStore.js                # Zustand auth state
+│       │   └── toastStore.js               # Zustand toast queue
 │       └── utils/
-│           └── toastMessages.js        # Typed toast helpers
+│           └── toastMessages.js            # Typed toast helpers
 │
 └── backend/
-    ├── server.js                       # Entry point: Express + Socket.IO setup
+    ├── server.js                           # Entry point: Express + Socket.IO setup
     └── src/
         ├── config/
-        │   ├── db.js                   # PostgreSQL pool (SSL in production)
-        │   ├── env.js                  # Required env var validation
-        │   ├── migrate.js              # CREATE TABLE IF NOT EXISTS migrations
-        │   └── redis.js                # ioredis client
+        │   ├── db.js                       # PostgreSQL pool (idle timeout + error handler)
+        │   ├── env.js                      # Required env var validation
+        │   ├── migrate.js                  # CREATE TABLE IF NOT EXISTS migrations
+        │   └── redis.js                    # ioredis client
         ├── controllers/
-        │   ├── auth.controller.js      # Register, Login, Me, Logout, Refresh
+        │   ├── auth.controller.js          # Register, Login, Me, Logout, Refresh, ForgotPassword, ResetPassword
         │   ├── execute.controller.js
         │   └── room.controller.js
         ├── middleware/
-        │   ├── auth.middleware.js       # JWT verification
+        │   ├── auth.middleware.js          # JWT verification
         │   ├── csrfProtection.js
         │   ├── errorHandler.js
         │   ├── rateLimiter.js
-        │   └── validateExecution.js    # Language + code length validation
+        │   └── validateExecution.js        # Language + code length validation
         ├── routes/
         │   ├── auth.routes.js
         │   ├── execute.routes.js
         │   └── room.routes.js
         └── services/
-            ├── containerCleanup.js     # No-op in production (cloud-safe)
-            ├── executionEngine.js      # child_process executor (node / python3)
-            ├── queue.js                # BullMQ worker (setIo pattern)
-            ├── roomManager.js          # Redis room + member management
-            └── socketHandlers.js       # All Socket.IO event handlers
+            ├── email.js                    # SendGrid HTTP API (port 443, no SMTP)
+            ├── executionEngine.js          # child_process executor (node / python3)
+            ├── queue.js                    # BullMQ worker — tags all events with sessionId
+            ├── roomManager.js              # Redis room + member management
+            └── socketHandlers.js           # All Socket.IO event handlers
 ```
 
 ---
 
 ## Deployment
-
-The production deployment uses a split frontend/backend model.
 
 ### Backend → Render
 
@@ -246,6 +245,8 @@ DATABASE_URL=postgresql://...neon.tech/neondb?sslmode=require
 REDIS_URL=rediss://...upstash.io:6379
 JWT_SECRET=<64-byte random hex>
 CLIENT_URL=https://your-app.vercel.app
+SENDGRID_API_KEY=SG.xxxxxxxxxxxxxxxxxxxx
+SENDGRID_FROM=your-verified-sender@example.com
 ```
 
 ### Frontend → Vercel
@@ -263,15 +264,15 @@ CLIENT_URL=https://your-app.vercel.app
 VITE_API_URL=https://your-backend.onrender.com
 ```
 
-> The `frontend/vercel.json` rewrite rule handles SPA routing — all paths fall back to `index.html` so React Router works on direct URL access and page refresh.
+> The `frontend/vercel.json` rewrite rule handles SPA routing — all paths fall back to `index.html`.
 
 ### Running DB Migrations
 
-Migrations run automatically as part of the Render build command:
 ```
 npm install && node src/config/migrate.js
 ```
-Uses `CREATE TABLE IF NOT EXISTS` — safe to run on every deploy, existing data is never affected.
+
+Uses `CREATE TABLE IF NOT EXISTS` — safe to run on every deploy.
 
 ---
 
@@ -287,30 +288,21 @@ Uses `CREATE TABLE IF NOT EXISTS` — safe to run on every deploy, existing data
 | PostgreSQL | 15.x | Or use Neon.tech |
 | Redis | 7.x | Or use Upstash |
 
-> **No Docker required** — the execution engine uses `child_process.spawn()` (node / python3) in both local and production environments.
-
----
+> **No Docker required** — the execution engine uses `child_process.spawn()` in both local and production environments.
 
 ### Environment Variables
 
 Create `backend/.env`:
 
 ```env
-# ── Server ─────────────────────────────────────────────
 PORT=8080
 NODE_ENV=development
-
-# ── Client (CORS origin) ────────────────────────────────
 CLIENT_URL=http://localhost:5173
-
-# ── PostgreSQL ──────────────────────────────────────────
 DATABASE_URL=postgresql://postgres:password@localhost:5432/codeforge
-
-# ── Redis ───────────────────────────────────────────────
 REDIS_URL=redis://localhost:6379
-
-# ── Auth ────────────────────────────────────────────────
 JWT_SECRET=your-super-secret-jwt-key-minimum-64-chars
+SENDGRID_API_KEY=SG.xxxxxxxxxxxxxxxxxxxx
+SENDGRID_FROM=your-verified-sender@example.com
 ```
 
 Create `frontend/.env`:
@@ -319,43 +311,29 @@ Create `frontend/.env`:
 VITE_API_URL=http://localhost:8080
 ```
 
----
-
 ### Running Locally
 
-#### 1. Database setup
-
 ```bash
+# 1. Database setup
 createdb codeforge
-cd backend
-node src/config/migrate.js
+cd backend && node src/config/migrate.js
+
+# 2. Backend
+cd backend && npm install && npm run dev
+# → http://localhost:8080
+
+# 3. Frontend
+cd frontend && npm install && npm run dev
+# → http://localhost:5173
 ```
 
-#### 2. Start the backend
-
-```bash
-cd backend
-npm install
-npm run dev
-# → Server running on http://localhost:8080
-```
-
-#### 3. Start the frontend
-
-```bash
-cd frontend
-npm install
-npm run dev
-# → Vite dev server on http://localhost:5173
-```
-
-> **Order matters:** Start Redis and PostgreSQL before the backend. Start the backend before the frontend.
+> **Order matters:** Start Redis and PostgreSQL before the backend.
 
 ---
 
 ## API Reference
 
-All routes are prefixed with `/api`. Non-GET routes require the `X-CSRF-Token` header (value returned by `/api/auth/me`).
+All routes prefixed with `/api`. Non-GET routes require `X-CSRF-Token` header (value from `/api/auth/me`).
 
 ### Auth
 
@@ -366,6 +344,8 @@ All routes are prefixed with `/api`. Non-GET routes require the `X-CSRF-Token` h
 | `POST` | `/api/auth/logout` | Cookie | — | `200` |
 | `GET` | `/api/auth/me` | Cookie | — | `{ user, csrfToken }` |
 | `POST` | `/api/auth/refresh` | Cookie | — | `{ user, csrfToken }` |
+| `POST` | `/api/auth/forgot-password` | — | `{ email }` | `200` |
+| `POST` | `/api/auth/reset-password` | — | `{ token, password }` | `200` |
 
 ### Execution
 
@@ -388,25 +368,27 @@ All routes are prefixed with `/api`. Non-GET routes require the `X-CSRF-Token` h
 
 Connect to the Socket.IO server at `VITE_API_URL` with `withCredentials: true`.
 
-### Client → Server (emit)
+### Client → Server
 
 | Event | Payload | Description |
 |---|---|---|
-| `run_code` | `{ language, code, roomId? }` | Queue code for execution |
+| `run_code` | `{ language, code, roomId?, sessionId }` | Queue code for execution |
 | `join_room` | `{ roomId, userId, displayName }` | Join a collaborative room |
 | `code_change` | `{ roomId, code, language }` | Broadcast code update to room |
 
-### Server → Client (listen)
+### Server → Client
 
 | Event | Payload | Description |
 |---|---|---|
-| `status` | `"QUEUED" \| "RUNNING" \| "COMPLETED" \| "ERROR"` | Execution status update |
-| `output` | `{ output, data, type }` | Stdout/stderr chunk |
+| `status` | `{ status, sessionId }` | Execution status update |
+| `output` | `{ output, data, type, sessionId }` | Stdout/stderr chunk |
 | `room_joined` | `{ room, roomId, members }` | Confirmation + initial state |
 | `member_joined` | `{ userId, members }` | Someone joined the room |
 | `member_left` | `{ userId, members }` | Someone left the room |
 | `code_updated` | `{ code, language, roomId }` | Remote code change |
 | `error` | `string` | Error message from server |
+
+> All `output` and `status` events carry a `sessionId`. The client drops any event whose `sessionId` doesn't match the current active run.
 
 ---
 
@@ -440,9 +422,16 @@ CREATE TABLE refresh_tokens (
   revoked_at  TIMESTAMPTZ,
   created_at  TIMESTAMPTZ DEFAULT NOW()
 );
-```
 
-> Run `node src/config/migrate.js` from the `backend/` directory to auto-create all tables.
+CREATE TABLE password_reset_tokens (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id     UUID REFERENCES users(id) ON DELETE CASCADE,
+  token_hash  VARCHAR(64) UNIQUE NOT NULL,
+  expires_at  TIMESTAMPTZ NOT NULL,
+  used_at     TIMESTAMPTZ,
+  created_at  TIMESTAMPTZ DEFAULT NOW()
+);
+```
 
 ---
 
@@ -451,14 +440,16 @@ CREATE TABLE refresh_tokens (
 | Mechanism | Implementation |
 |---|---|
 | **Passwords** | bcrypt, 10 salt rounds |
-| **Sessions** | HttpOnly + Secure + `SameSite=None` (production cross-origin) / `SameSite=Lax` (local) |
-| **Refresh Tokens** | Rotating tokens stored as SHA-256 hashes in PostgreSQL. Single-use, 7-day TTL |
+| **Sessions** | HttpOnly + Secure + `SameSite=None` (production) / `SameSite=Lax` (local) |
+| **Refresh Tokens** | Rotating tokens stored as SHA-256 hashes. Single-use, 7-day TTL |
+| **Password Reset** | Single-use token hashed with SHA-256, 10-minute expiry. Resets all refresh tokens on use |
 | **CSRF** | Double-submit pattern — token in `/me` response, required as `X-CSRF-Token` header |
 | **Rate Limiting** | Global: 100 req/15min. Execution: 20 runs/hour per IP |
 | **Code Sandbox** | Subprocess timeout 10s. Process killed with SIGKILL on timeout |
 | **Input Validation** | Max 10,000 chars. Language must be in `SUPPORTED_LANGUAGES` whitelist |
 | **Helmet** | CSP, HSTS (prod only), frameAncestors none |
 | **userId Trust** | `socket.data.userId` set only at `join_room` — never overrideable by client events |
+| **Email Enumeration** | Forgot-password always returns the same message regardless of whether email exists |
 
 ---
 
@@ -496,23 +487,22 @@ CodeForge uses a custom warm parchment design language.
 | `RUNNING` | Accent orange |
 | `COMPLETED` | Green |
 | `ERROR` | Red |
-| `TIMEOUT` | Yellow |
 
 ---
 
 ## Known Limitations
 
 - **Languages supported:** JavaScript and Python only. Adding a language requires updating `RUNNERS` in `executionEngine.js`.
-- **No process isolation:** The `child_process` approach runs code directly on the server (no Docker sandbox). Suitable for portfolio/demo use. For production-grade isolation, replace with Docker on a VPS that exposes `/var/run/docker.sock`.
-- **Room persistence:** Rooms are stored in Redis and expire after 24 hours. No permanent room history.
+- **No process isolation:** The `child_process` approach runs code directly on the server (no Docker). Suitable for portfolio/demo use.
+- **Room persistence:** Rooms are stored in Redis and expire after 24 hours.
 - **Guest execution history:** Guest runs via `/playground` are not saved to the database.
 - **Horizontal scaling:** The `setIo` pattern in `queue.js` uses in-process Socket.IO access — won't work across multiple Node processes without `@socket.io/redis-adapter`.
-- **Render free tier cold starts:** Free instances sleep after 15 minutes of inactivity. First request after sleep takes ~30 seconds.
+- **Render free tier cold starts:** Free instances sleep after 15 minutes. First request after sleep takes ~30 seconds.
 
 ---
 
 <div align="center">
 
-Built  by Joel Kunjumon · MIT License
+Built by Joel Kunjumon · MIT License
 
-</div>  
+</div>
