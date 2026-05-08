@@ -145,7 +145,6 @@ export default function EditorTopbar({ left, right }) {
         padding: '0 12px',
         fontFamily: "'DM Mono', monospace",
         flexShrink: 0,
-        overflow: 'hidden',
         gap: 8,
       }}
     >
@@ -156,10 +155,10 @@ export default function EditorTopbar({ left, right }) {
       }} />
 
       {/* Left slot: Logo + controls */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, overflow: 'hidden', minWidth: 0 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
         <Logo />
         <div style={{ width: 1, height: 18, background: T.rule, flexShrink: 0 }} />
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, overflow: 'hidden' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, overflow: 'visible' }}>
           {left}
         </div>
       </div>
