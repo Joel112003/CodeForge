@@ -13,6 +13,25 @@ export default function setupSocket(io) {
   io.on("connection", (socket) => {
     console.log("New client connected: " + socket.id);
 
+    async function resolveDisplayName({ displayName, userId }) {
+      const trimmed = typeof displayName === "string" ? displayName.trim() : "";
+      if (trimmed) return trimmed;
+      if (userId) {
+        try {
+          const result = await pool.query(
+            "SELECT email FROM users WHERE id = $1",
+            [userId],
+          );
+          if (result.rows.length > 0 && result.rows[0].email) {
+            return result.rows[0].email;
+          }
+        } catch (err) {
+          console.warn("[join_room] failed to resolve displayName", { userId, err: err.message });
+        }
+      }
+      return userId || "Anonymous";
+    }
+
     socket.on("join_room", async ({ roomId, userId, displayName }, callback) => {
       console.log("[join_room] request", { socketId: socket.id, roomId, userId });
 
@@ -28,13 +47,14 @@ export default function setupSocket(io) {
 
       // Store UUID for DB writes, email for display
       socket.join(normalizedRoomId);
+      const resolvedDisplayName = await resolveDisplayName({ displayName, userId });
       socket.data.roomId       = normalizedRoomId;
       socket.data.userId       = userId;        // UUID — used for executions table
-      socket.data.displayName  = displayName || userId;  // email — shown in member list
+      socket.data.displayName  = resolvedDisplayName;  // email/name — shown in member list
 
       // Store the displayName (email) in the member set so the UI shows readable names
       await addMember(normalizedRoomId, socket.data.displayName);
-      const members = await getMembers(normalizedRoomId);
+      const members = (await getMembers(normalizedRoomId)).filter(Boolean);
 
       console.log("[join_room] success", {
         socketId: socket.id,
@@ -118,7 +138,7 @@ export default function setupSocket(io) {
       if (roomId && userId) {
         // displayName (email) was stored in the Redis member set — must remove that key
         await removeMember(roomId, displayName || userId);
-        const members = await getMembers(roomId);
+        const members = (await getMembers(roomId)).filter(Boolean);
 
         // Broadcast updated list so all clients re-render MemberList
         io.to(roomId).emit("member_left", { userId: displayName || userId, members });

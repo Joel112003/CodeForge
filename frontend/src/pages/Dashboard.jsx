@@ -170,5 +170,3 @@ function JoinIcon() {
     </svg>
   )
 }
-
-const T2 = T
