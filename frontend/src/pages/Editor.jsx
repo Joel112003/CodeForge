@@ -36,20 +36,18 @@ export default function Editor() {
   const [outputLines, setOutputLines] = useState([])
   const [status,      setStatus]      = useState('IDLE')
   const [members,     setMembers]     = useState([])
-  const [connected,   setConnected]   = useState(false)
   const isRemoteUpdate = useRef(false)
 
-  const { runCode, joinRoom, sendCodeChange } = useSocket({
+  const { runCode, joinRoom, sendCodeChange, connected } = useSocket({
     onOutput: (data) => {
       const normalized = normalizeOutput(data)
       if (normalized.data) setOutputLines((prev) => [...prev, normalized])
     },
-    onStatus:      (s) => setStatus(s),
-    onRoomJoined:  ({ room, members: m }) => {
+    onStatus:     (s) => setStatus(s),
+    onRoomJoined: ({ room, members: m }) => {
       setMembers(m || [])
       setCode(room.code || DEFAULT_CODE[room.language] || DEFAULT_CODE.javascript)
       setLanguage(room.language || 'javascript')
-      setConnected(true)
     },
     onMemberJoined: ({ members: m }) => setMembers(m || []),
     onMemberLeft:   ({ members: m }) => setMembers(m || []),

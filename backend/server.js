@@ -26,10 +26,25 @@ const app = express();
 app.set("trust proxy", 1);
 const httpServer = createServer(app);
 
+// Parse CLIENT_URL as comma-separated list so both localhost AND the deployed
+// frontend can connect without changing code (e.g. "http://localhost:5173,https://codeforge.vercel.app")
+const allowedOrigins = (process.env.CLIENT_URL || '')
+  .split(',')
+  .map((s) => s.trim())
+  .filter(Boolean)
+
+function isOriginAllowed(origin) {
+  if (!origin) return true // server-to-server / Postman
+  return allowedOrigins.includes(origin)
+}
+
 const io = new Server(httpServer, {
   cors: {
-    origin: process.env.CLIENT_URL,
-    methods: ["GET", "POST"],
+    origin: (origin, callback) => {
+      if (isOriginAllowed(origin)) callback(null, true)
+      else callback(new Error(`[CORS] blocked: ${origin}`))
+    },
+    methods: ['GET', 'POST'],
     credentials: true,
   },
 });
@@ -38,8 +53,6 @@ const io = new Server(httpServer, {
 setupSocket(io);
 setIo(io);
 
-const clientOrigin = process.env.CLIENT_URL;
-
 app.use(
   helmet({
     contentSecurityPolicy: {
@@ -47,7 +60,7 @@ app.use(
         defaultSrc: ["'self'"],
         baseUri: ["'self'"],
         frameAncestors: ["'none'"],
-        connectSrc: ["'self'", clientOrigin, "ws:", "wss:"].filter(Boolean),
+        connectSrc: ["'self'", ...allowedOrigins, "ws:", "wss:"],
         imgSrc: ["'self'", "data:"],
         scriptSrc: ["'self'"],
         styleSrc: ["'self'"],
@@ -58,7 +71,10 @@ app.use(
 );
 app.use(
   cors({
-    origin: clientOrigin,
+    origin: (origin, callback) => {
+      if (isOriginAllowed(origin)) callback(null, true)
+      else callback(new Error(`[CORS] blocked: ${origin}`))
+    },
     credentials: true,
   }),
 );

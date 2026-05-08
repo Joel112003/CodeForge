@@ -1,4 +1,5 @@
 import './bones/registry'
+import { Analytics } from '@vercel/analytics/react'
 import { lazy, Suspense } from 'react'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { useHydrate } from './hooks/useHydrate'
@@ -22,8 +23,10 @@ export default function App() {
 
   return (
     <BrowserRouter>
+      <Analytics />
       <ToastContainer />
       <Suspense fallback={<PageSkeleton />}>
+
         <Routes>
           <Route path="/"                  element={<Landing />} />
           <Route path="/login"             element={<Login />} />
