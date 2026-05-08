@@ -1,5 +1,4 @@
 
-
 const SENDGRID_API_URL = "https://api.sendgrid.com/v3/mail/send";
 
 export async function sendPasswordResetEmail(toEmail, resetLink) {

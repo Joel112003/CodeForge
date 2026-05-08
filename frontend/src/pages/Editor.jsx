@@ -139,36 +139,25 @@ export default function Editor() {
         </div>
 
         {/* ── Right panel (mobile: stacked below editor) ── */}
-        {/* Terminal — always rendered, 200px on mobile, auto on desktop */}
-        <div
-          style={{
-            flexShrink: 0,
-            overflow: 'hidden',
-            border: `1px solid ${T.rule}`,
-            height: 200,          /* mobile fixed height */
-          }}
-        >
+        <div className="editor-right-panel" style={{ display: 'flex', flexDirection: 'column', gap: 8, flexShrink: 0, width: '100%' }}>
           <style>{`
             @media (min-width: 1024px) {
-              .editor-right-panel { display: flex !important; flex-direction: column; width: 40% !important; height: 100% !important; flex-shrink: 0; gap: 8px; border: none !important; background: transparent !important; }
-              .editor-terminal    { flex: 1 1 0; min-height: 0; border: 1px solid ${T.rule}; overflow: hidden; }
-              .editor-members     { height: 192px; flex-shrink: 0; border: 1px solid ${T.rule}; overflow: hidden; }
-              .editor-terminal-mobile { height: 100%; }
-              .editor-members-mobile  { display: none !important; }
+              .editor-right-panel { width: 40% !important; height: 100% !important; }
+              .editor-terminal    { flex: 1 1 0; min-height: 0; height: auto !important; }
+              .editor-members     { height: 192px !important; }
             }
           `}</style>
-          <div className="editor-right-panel h-full" style={{ display: 'contents' }}>
-            <div className="editor-terminal" style={{ height: '100%', overflow: 'hidden' }}>
-              <div className="editor-terminal-mobile" style={{ height: '100%' }}>
-                <Terminal lines={outputLines} status={status} />
-              </div>
-            </div>
-            {roomId && (
-              <div className="editor-members editor-members-mobile" style={{ height: 140, flexShrink: 0, overflow: 'hidden', border: `1px solid ${T.rule}`, marginTop: 8 }}>
-                <MemberList members={members} roomId={roomId} />
-              </div>
-            )}
+
+          {/* Terminal — 200px on mobile, fills on desktop */}
+          <div className="editor-terminal" style={{ height: 200, overflow: 'hidden', border: `1px solid ${T.rule}` }}>
+            <Terminal lines={outputLines} status={status} />
           </div>
+
+          {roomId && (
+            <div className="editor-members" style={{ height: 140, flexShrink: 0, overflow: 'hidden', border: `1px solid ${T.rule}` }}>
+              <MemberList members={members} roomId={roomId} />
+            </div>
+          )}
         </div>
       </div>
 
