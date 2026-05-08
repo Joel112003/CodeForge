@@ -151,7 +151,7 @@ export default function EditorTopbar({ left, right }) {
         fontFamily: "'DM Mono', monospace",
         flexShrink: 0,
         gap: 6,
-        overflow: 'hidden',
+        overflow: 'visible',
       }}
     >
       {/* top accent gradient line */}
@@ -161,10 +161,10 @@ export default function EditorTopbar({ left, right }) {
       }} />
 
       {/* Left slot: Logo + controls — can shrink/clip if needed */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0, overflow: 'hidden' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0, overflow: 'visible' }}>
         <Logo />
         <div style={{ width: 1, height: 18, background: T.rule, flexShrink: 0 }} />
-        <div style={{ display: 'flex', alignItems: 'center', gap: 5, overflow: 'hidden' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 5, overflow: 'visible' }}>
           {left}
         </div>
       </div>
