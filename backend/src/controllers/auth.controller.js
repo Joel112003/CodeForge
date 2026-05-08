@@ -240,30 +240,101 @@ export const refresh = async (req, res) => {
   }
 };
 
+import { sendPasswordResetEmail } from "../services/email.js";
+
 export const forgotPassword = async (req, res) => {
   const { email } = req.body;
   if (!email) return res.status(400).json({ message: "Email is required" });
+
   try {
-    const result = pool.query("SELECT id FROM users WHERE email = $1", [email]);
-    if ((await result).rows.length === 0) {
-      return res.json({ message: "if that email exists , a reset link has been sent." });
+    const result = await pool.query("SELECT id FROM users WHERE email = $1", [email]);
+
+    // Always return the same message to prevent email enumeration
+    if (result.rows.length === 0) {
+      return res.json({ message: "If that email exists, a reset link has been sent." });
     }
 
     const userId = result.rows[0].id;
     const rawToken = crypto.randomBytes(32).toString("hex");
     const tokenHash = crypto.createHash("sha256").update(rawToken).digest("hex");
-    const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
-    await pool.query("UPDATE passwor_reset_tokens SET used_at=NOW() WHERE user_id = $1 AND used_at IS NULL", [userId]);
-    await pool.query("INSERT INTO password_reset_tokens (user_id , token_hash , expires_at) VALUES ($1 , $2 , $3)", [userId, tokenHash, expiresAt]);
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+    // Invalidate any previous unused tokens for this user
+    await pool.query(
+      "UPDATE password_reset_tokens SET used_at = NOW() WHERE user_id = $1 AND used_at IS NULL",
+      [userId],
+    );
+
+    await pool.query(
+      "INSERT INTO password_reset_tokens (user_id, token_hash, expires_at) VALUES ($1, $2, $3)",
+      [userId, tokenHash, expiresAt],
+    );
+
     const resetLink = `${process.env.CLIENT_URL}/reset-password?token=${rawToken}`;
-    await sendPAsswordResetEmail(email, resetLink)
-    return res.json({ message: "If the email exists , a reset link has been sent  " })
+    await sendPasswordResetEmail(email, resetLink);
 
-
+    return res.json({ message: "If that email exists, a reset link has been sent." });
   } catch (err) {
-    console.error(err)
+    console.error(err);
     res.status(500).json({ message: "Server error" });
   }
+};
 
-}
+export const resetPassword = async (req, res) => {
+  const { token, password } = req.body;
+  if (!token || !password) {
+    return res.status(400).json({ message: "Token and new password are required" });
+  }
+  if (password.length < 8) {
+    return res.status(400).json({ message: "Password must be at least 8 characters" });
+  }
+
+  try {
+    const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
+
+    const result = await pool.query(
+      "SELECT id, user_id, expires_at, used_at FROM password_reset_tokens WHERE token_hash = $1",
+      [tokenHash],
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(400).json({ message: "Invalid or expired reset link" });
+    }
+
+    const record = result.rows[0];
+
+    if (record.used_at) {
+      return res.status(400).json({ message: "Reset link has already been used" });
+    }
+
+    if (new Date(record.expires_at) <= new Date()) {
+      return res.status(400).json({ message: "Reset link has expired. Please request a new one." });
+    }
+
+    const passwordHash = await bcrypt.hash(password, 10);
+
+    await pool.query("UPDATE users SET password_hash = $1 WHERE id = $2", [
+      passwordHash,
+      record.user_id,
+    ]);
+
+    // Mark token as used
+    await pool.query(
+      "UPDATE password_reset_tokens SET used_at = NOW() WHERE id = $1",
+      [record.id],
+    );
+
+    // Revoke all refresh tokens for this user (force re-login on all devices)
+    await pool.query(
+      "UPDATE refresh_tokens SET revoked_at = NOW() WHERE user_id = $1 AND revoked_at IS NULL",
+      [record.user_id],
+    );
+
+    return res.json({ message: "Password reset successful. You can now log in." });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
 

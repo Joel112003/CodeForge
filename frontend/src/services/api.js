@@ -74,6 +74,13 @@ export const logoutUser = () => {
 export const refreshSession = () => {
   return refreshClient.post("/api/auth/refresh", null, { skipAuthRefresh: true });
 };
+export const forgotPassword = (email) => {
+  return api.post("/api/auth/forgot-password", { email }, { skipAuthRefresh: true });
+};
+export const resetPassword = (token, password) => {
+  return api.post("/api/auth/reset-password", { token, password }, { skipAuthRefresh: true });
+};
+
 
 //code execution
 export const executeCode = (data) => {

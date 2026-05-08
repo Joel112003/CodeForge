@@ -10,6 +10,8 @@ import Dashboard from './pages/Dashboard'
 import Editor    from './pages/Editor'
 import History   from './pages/History'
 import Playground from './pages/Playground'
+import ForgotPassword from './pages/ForgotPassword'
+import ResetPassword from './pages/ResetPassword'
 import { getMe } from './services/api'
 import useAuthStore from './store/authStore'
 
@@ -49,6 +51,8 @@ export default function App() {
         <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
         <Route path="/editor/:roomId?" element={<ProtectedRoute><Editor /></ProtectedRoute>} />
         <Route path="/history"   element={<ProtectedRoute><History /></ProtectedRoute>} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password"  element={<ResetPassword />} />
         <Route path="*"          element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>

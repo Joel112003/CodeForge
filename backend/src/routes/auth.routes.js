@@ -1,4 +1,4 @@
-import { register, login, me, logout, refresh } from "../controllers/auth.controller.js";
+import { register, login, me, logout, refresh, forgotPassword, resetPassword } from "../controllers/auth.controller.js";
 import { loginLimiter, registerLimiter } from "../middleware/rateLimiter.js";
 import { authenticateToken } from "../middleware/auth.middleware.js";
 import express from "express";
@@ -10,5 +10,7 @@ router.post("/login", loginLimiter, login);
 router.get("/me", authenticateToken, me);
 router.post("/logout", logout);
 router.post("/refresh", refresh);
+router.post("/forgot-password", forgotPassword);
+router.post("/reset-password", resetPassword);
 
 export default router;
