@@ -2,80 +2,43 @@ import { useEffect, useRef } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import useToastStore from '../../store/toastStore'
 
-/* ── Icons ──────────────────────────────────────────────────────────────────── */
 const ICONS = {
   success: (
-    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-      <path d="M2.5 7.5L5.5 10.5L11.5 4" stroke="currentColor" strokeWidth="1.8"
-        strokeLinecap="round" strokeLinejoin="round"/>
+    <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+      <path d="M2 7L5 10L11 3.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
     </svg>
   ),
   error: (
-    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-      <path d="M4 4L10 10M10 4L4 10" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+    <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+      <path d="M3 3L10 10M10 3L3 10" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
     </svg>
   ),
   info: (
-    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-      <path d="M7 6.5V10M7 4.5V4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+    <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+      <path d="M6.5 5.5V9.5M6.5 4V3.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
     </svg>
   ),
   warning: (
-    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-      <path d="M7 5V8M7 10V9.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+    <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+      <path d="M6.5 4.5V7.5M6.5 9V8.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
     </svg>
   ),
 }
 
-/* ── Design tokens — dark ink palette matching CodeForge ─────────────────────
-   Toast lives over the editor so it must be dark + high-contrast.           */
 const STYLES = {
-  success: {
-    bg:     '#1A2B1F',
-    border: '#2D5A3D',
-    accent: '#4ADE80',
-    label:  '#86EFAC',
-    text:   '#D1FAE5',
-    bar:    '#22C55E',
-    iconBg: 'rgba(74,222,128,0.12)',
-  },
-  error: {
-    bg:     '#2B1A1A',
-    border: '#5A2D2D',
-    accent: '#F87171',
-    label:  '#FCA5A5',
-    text:   '#FEE2E2',
-    bar:    '#EF4444',
-    iconBg: 'rgba(248,113,113,0.12)',
-  },
-  info: {
-    bg:     '#1A1F2B',
-    border: '#2D3D5A',
-    accent: '#60A5FA',
-    label:  '#93C5FD',
-    text:   '#DBEAFE',
-    bar:    '#3B82F6',
-    iconBg: 'rgba(96,165,250,0.12)',
-  },
-  warning: {
-    bg:     '#2B251A',
-    border: '#5A4A2D',
-    accent: '#FBBF24',
-    label:  '#FCD34D',
-    text:   '#FEF3C7',
-    bar:    '#F59E0B',
-    iconBg: 'rgba(251,191,36,0.12)',
-  },
+  success: { accent: '#2D7A4F', bar: '#3D9B63', label: 'Success' },
+  error:   { accent: '#C04A1A', bar: '#D4551E', label: 'Error'   },
+  info:    { accent: '#2A5F9E', bar: '#3570B8', label: 'Info'    },
+  warning: { accent: '#9A6800', bar: '#B87C00', label: 'Warning' },
 }
 
 const DURATION = 3500
 
-/* ── Single toast ───────────────────────────────────────────────────────────── */
 function ToastItem({ toast }) {
   const removeToast = useToastStore((s) => s.removeToast)
   const progressRef = useRef(null)
   const s = STYLES[toast.variant] || STYLES.info
-  const LABEL = (toast.title || toast.variant).toUpperCase()
+  const label = (toast.title || s.label).toUpperCase()
 
   useEffect(() => {
     const start = Date.now()
@@ -92,102 +55,81 @@ function ToastItem({ toast }) {
   return (
     <motion.div
       layout
-      initial={{ opacity: 0, y: -8, scale: 0.96 }}
-      animate={{ opacity: 1, y: 0,  scale: 1    }}
-      exit={{    opacity: 0, y: -8, scale: 0.96 }}
-      transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+      initial={{ opacity: 0, x: 16, scale: 0.97 }}
+      animate={{ opacity: 1, x: 0,  scale: 1    }}
+      exit={{    opacity: 0, x: 16, scale: 0.97 }}
+      transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+      onClick={() => removeToast(toast.id)}
       style={{
         position: 'relative',
-        display: 'flex',
-        alignItems: 'flex-start',
-        gap: 12,
-        padding: '13px 14px 16px',
-        width: 320,
-        cursor: 'pointer',
-        overflow: 'hidden',
-        background: s.bg,
-        border: `1px solid ${s.border}`,
+        width: 300,
+        background: '#FAF7F0',
+        border: '1px solid #E0D8CA',
         borderLeft: `3px solid ${s.accent}`,
-        boxShadow: `0 12px 40px rgba(0,0,0,0.55), 0 2px 8px rgba(0,0,0,0.3)`,
+        boxShadow: '3px 3px 0 #E0D8CA',
+        overflow: 'hidden',
+        cursor: 'pointer',
         fontFamily: "'DM Mono', monospace",
       }}
-      onClick={() => removeToast(toast.id)}
     >
-      {/* Icon badge */}
-      <div style={{
-        flexShrink: 0,
-        width: 26, height: 26,
-        background: s.iconBg,
-        border: `1px solid ${s.border}`,
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        marginTop: 1,
-        color: s.accent,
-      }}>
-        {ICONS[toast.variant] || ICONS.info}
-      </div>
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '14px 14px 16px' }}>
+        <span style={{
+          flexShrink: 0,
+          marginTop: 1,
+          color: s.accent,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          width: 22, height: 22,
+          border: `1px solid ${s.accent}22`,
+          background: `${s.accent}0D`,
+        }}>
+          {ICONS[toast.variant] || ICONS.info}
+        </span>
 
-      {/* Text block */}
-      <div style={{ flex: 1, minWidth: 0 }}>
-        {/* Label row */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 5 }}>
-          <span style={{
-            fontSize: 8,
-            letterSpacing: '0.18em',
-            textTransform: 'uppercase',
-            color: s.accent,
-            fontWeight: 600,
-          }}>{LABEL}</span>
-          {/* Tick mark line */}
-          <span style={{ flex: 1, height: 1, background: s.border }} />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 5 }}>
+            <span style={{
+              fontSize: 8,
+              letterSpacing: '0.18em',
+              textTransform: 'uppercase',
+              color: s.accent,
+              fontWeight: 600,
+            }}>{label}</span>
+            <span style={{ flex: 1, height: '1px', background: '#E0D8CA' }} />
+          </div>
+          <p style={{
+            fontSize: 11,
+            color: '#4A3E30',
+            lineHeight: 1.65,
+            margin: 0,
+            letterSpacing: '0.01em',
+          }}>
+            {toast.message}
+          </p>
         </div>
 
-        {/* Message */}
-        <p style={{
-          fontSize: 11,
-          color: s.text,
-          lineHeight: 1.6,
-          margin: 0,
-          letterSpacing: '0.01em',
-        }}>
-          {toast.message}
-        </p>
+        <button
+          onClick={(e) => { e.stopPropagation(); removeToast(toast.id) }}
+          style={{
+            background: 'none', border: 'none',
+            padding: '0 2px', cursor: 'pointer',
+            color: '#A0917E', fontSize: 15, lineHeight: 1,
+            flexShrink: 0, marginTop: -1,
+            transition: 'color 0.12s',
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.color = '#1A1208' }}
+          onMouseLeave={(e) => { e.currentTarget.style.color = '#A0917E' }}
+        >
+          ×
+        </button>
       </div>
 
-      {/* Close button */}
-      <button
-        onClick={(e) => { e.stopPropagation(); removeToast(toast.id) }}
-        style={{
-          background: 'none',
-          border: 'none',
-          padding: '2px 4px',
-          cursor: 'pointer',
-          color: s.label,
-          fontSize: 14,
-          lineHeight: 1,
-          flexShrink: 0,
-          marginTop: -1,
-          opacity: 0.5,
-          transition: 'opacity 0.15s',
-        }}
-        onMouseEnter={(e) => { e.currentTarget.style.opacity = '1' }}
-        onMouseLeave={(e) => { e.currentTarget.style.opacity = '0.5' }}
-      >
-        ×
-      </button>
-
-      {/* Progress bar — shrinks left-to-right */}
-      <div style={{
-        position: 'absolute',
-        bottom: 0, left: 0,
-        width: '100%',
-        height: 2,
-        background: s.border,
-      }}>
+      <div style={{ position: 'absolute', bottom: 0, left: 0, width: '100%', height: 2, background: '#EDE8DF' }}>
         <div
           ref={progressRef}
           style={{
-            width: '100%',
-            height: '100%',
+            width: '100%', height: '100%',
             background: s.bar,
             transformOrigin: 'left center',
             transform: 'scaleX(1)',
@@ -198,14 +140,12 @@ function ToastItem({ toast }) {
   )
 }
 
-/* ── Container ──────────────────────────────────────────────────────────────── */
 export default function ToastContainer() {
   const toasts = useToastStore((s) => s.toasts)
   return (
     <div style={{
       position: 'fixed',
-      bottom: 24,
-      right: 24,
+      bottom: 24, right: 24,
       display: 'flex',
       flexDirection: 'column-reverse',
       gap: 8,
