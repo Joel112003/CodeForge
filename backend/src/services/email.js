@@ -1,28 +1,23 @@
-import nodemailer from "nodemailer";
 
-const EMAIL_TIMEOUT_MS = Number(process.env.EMAIL_TIMEOUT_MS || 10000);
 
-const transporter = nodemailer.createTransport({
-  service: "gmail",
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS, // Gmail App Password
-  },
-  connectionTimeout: EMAIL_TIMEOUT_MS,
-  greetingTimeout: EMAIL_TIMEOUT_MS,
-  socketTimeout: EMAIL_TIMEOUT_MS,
-});
+const SENDGRID_API_URL = "https://api.sendgrid.com/v3/mail/send";
 
 export async function sendPasswordResetEmail(toEmail, resetLink) {
-  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
-    throw new Error("Email credentials are not configured");
+  const apiKey = process.env.SENDGRID_API_KEY;
+  const fromEmail = process.env.SENDGRID_FROM; // must be a verified sender in SendGrid
+
+  if (!apiKey || !fromEmail) {
+    throw new Error("SendGrid credentials (SENDGRID_API_KEY, SENDGRID_FROM) are not configured");
   }
 
-  await transporter.sendMail({
-    from: `"CodeForge" <${process.env.EMAIL_USER}>`,
-    to: toEmail,
+  const payload = {
+    personalizations: [{ to: [{ email: toEmail }] }],
+    from: { email: fromEmail, name: "CodeForge" },
     subject: "Reset your CodeForge password — expires in 10 min",
-    text: `
+    content: [
+      {
+        type: "text/plain",
+        value: `
 CodeForge — Password Reset
 
 We received a request to reset the password for your account.
@@ -38,8 +33,11 @@ Your password will not change.
 Need help? Contact us at support@codeforge.dev
 
 © 2026 CodeForge
-    `.trim(),
-    html: `<!DOCTYPE html>
+        `.trim(),
+      },
+      {
+        type: "text/html",
+        value: `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -59,7 +57,7 @@ Need help? Contact us at support@codeforge.dev
         <table width="100%" cellpadding="0" cellspacing="0" role="presentation"
           style="max-width:560px;background:#FAF7F0;border:1px solid #E0D8CA;border-left:4px solid #C04A1A;">
 
-          <!-- ── HEADER ── -->
+          <!-- HEADER -->
           <tr>
             <td style="padding:32px 40px 0;">
 
@@ -67,7 +65,6 @@ Need help? Contact us at support@codeforge.dev
               <table width="100%" cellpadding="0" cellspacing="0" role="presentation">
                 <tr>
                   <td style="vertical-align:middle;">
-                    <!-- Logo square -->
                     <table cellpadding="0" cellspacing="0" role="presentation" style="display:inline-table;">
                       <tr>
                         <td style="width:30px;height:30px;background:#C04A1A;text-align:center;vertical-align:middle;box-shadow:2px 2px 0 #8C3310;">
@@ -108,7 +105,7 @@ Need help? Contact us at support@codeforge.dev
                 Click the button below to set a new one.
               </p>
 
-              <!-- ── CTA BUTTON ── -->
+              <!-- CTA BUTTON -->
               <table cellpadding="0" cellspacing="0" role="presentation" style="margin-bottom:28px;">
                 <tr>
                   <td style="background:#C04A1A;box-shadow:3px 3px 0 #8C3310;">
@@ -121,14 +118,13 @@ Need help? Contact us at support@codeforge.dev
                 </tr>
               </table>
 
-              <!-- ── EXPIRY CALLOUT ── -->
+              <!-- EXPIRY CALLOUT -->
               <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="margin-bottom:28px;">
                 <tr>
                   <td style="background:#FEF2E8;border:1px solid #FBDECF;border-left:3px solid #C04A1A;padding:14px 16px;">
                     <table cellpadding="0" cellspacing="0" role="presentation">
                       <tr>
                         <td style="vertical-align:top;padding-right:10px;width:20px;">
-                          <!-- Warning square -->
                           <div style="width:18px;height:18px;background:#C04A1A;text-align:center;line-height:18px;">
                             <span style="font-size:11px;color:#FAF7F0;font-weight:700;">!</span>
                           </div>
@@ -147,7 +143,7 @@ Need help? Contact us at support@codeforge.dev
                 </tr>
               </table>
 
-              <!-- ── FALLBACK URL ── -->
+              <!-- FALLBACK URL -->
               <p style="font-size:10px;color:#A0917E;margin:0 0 6px;letter-spacing:0.02em;">
                 Button not working? Copy and paste this link into your browser:
               </p>
@@ -159,7 +155,7 @@ Need help? Contact us at support@codeforge.dev
                 </tr>
               </table>
 
-              <!-- ── SAFETY NOTICE ── -->
+              <!-- SAFETY NOTICE -->
               <div style="height:1px;background:#E0D8CA;margin-bottom:20px;"></div>
               <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="margin-bottom:32px;">
                 <tr>
@@ -177,7 +173,7 @@ Need help? Contact us at support@codeforge.dev
             </td>
           </tr>
 
-          <!-- ── FOOTER ── -->
+          <!-- FOOTER -->
           <tr>
             <td style="padding:0 40px 32px;">
               <div style="height:1px;background:#E0D8CA;margin-bottom:16px;"></div>
@@ -210,5 +206,21 @@ Need help? Contact us at support@codeforge.dev
 
 </body>
 </html>`,
+      },
+    ],
+  };
+
+  const response = await fetch(SENDGRID_API_URL, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
   });
+
+  if (!response.ok) {
+    const body = await response.text();
+    throw new Error(`SendGrid error ${response.status}: ${body}`);
+  }
 }
