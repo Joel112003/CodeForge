@@ -1,6 +1,5 @@
 import { useNavigate } from "react-router-dom"
 
-
 const T = {
   panel: '#FAF7F0',
   panelDeep: '#F5F0E8',
@@ -28,6 +27,7 @@ function Logo() {
       }}>
         <span style={{ fontFamily: "'Spectral', serif", fontWeight: 700, color: '#FAF7F0', fontSize: '1rem', fontStyle: 'italic' }}>C</span>
       </div>
+      {/* Brand name — hidden on mobile to save space */}
       <span className="hidden sm:inline" style={{ fontSize: 13, letterSpacing: '0.04em', color: T.ink, fontWeight: 500 }}>
         Code<span style={{ color: T.accent }}>Forge</span>
       </span>
@@ -39,17 +39,18 @@ function Logo() {
 export function ConnectionBadge({ connected }) {
   return (
     <div style={{
-      display: 'flex', alignItems: 'center', gap: 6,
-      padding: '5px 10px',
+      display: 'flex', alignItems: 'center', gap: 5,
+      padding: '5px 8px',
       background: T.panelDeep,
       border: `1px solid ${T.rule}`,
       flexShrink: 0,
     }}>
       <span style={{
-        width: 8, height: 8, borderRadius: '50%', flexShrink: 0,
+        width: 7, height: 7, borderRadius: '50%', flexShrink: 0,
         background: connected ? '#059669' : '#DC2626',
         ...(connected ? {} : { animation: 'cf-pulse 1.4s ease-in-out infinite' }),
       }} />
+      {/* Label hidden on mobile — the dot alone is enough */}
       <span className="hidden sm:inline" style={{ fontSize: 11, color: connected ? '#065F46' : '#991B1B', letterSpacing: '0.06em' }}>
         {connected ? 'connected' : 'connecting'}
       </span>
@@ -77,7 +78,7 @@ export function RunButton({ status, onClick }) {
       onClick={onClick}
       disabled={running}
       style={{
-        height: 40, padding: '0 18px', minWidth: 80,
+        height: 36, padding: '0 14px', minWidth: 68,
         background: running
           ? T.panelDeep
           : `linear-gradient(135deg, #E8501E, ${T.accent} 60%, #A53D12)`,
@@ -86,7 +87,7 @@ export function RunButton({ status, onClick }) {
         fontFamily: "'DM Mono', monospace",
         fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase',
         cursor: running ? 'not-allowed' : 'pointer',
-        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
         boxShadow: running ? 'none' : `2px 2px 0 ${T.accent2}`,
         position: 'relative', overflow: 'hidden', transition: 'all 0.1s',
         flexShrink: 0,
@@ -98,6 +99,7 @@ export function RunButton({ status, onClick }) {
       {running ? (
         <>
           <span style={{ width: 7, height: 7, borderRadius: '50%', background: T.accent, animation: 'cf-pulse 1.2s ease-in-out infinite' }} />
+          {/* Text hidden on mobile — spinning dot is enough */}
           <span className="hidden sm:inline">{status === 'QUEUED' ? 'Queued' : 'Running'}</span>
         </>
       ) : (
@@ -111,17 +113,20 @@ export function RunButton({ status, onClick }) {
 }
 
 /* ── Clear / outline button ─────────────────────────────────────────────────── */
-export function TopbarOutlineBtn({ onClick, children }) {
+export function TopbarOutlineBtn({ onClick, children, hideOnMobile = false }) {
   return (
     <button
       onClick={onClick}
+      className={hideOnMobile ? 'hidden sm:flex' : undefined}
       style={{
-        height: 40, padding: '0 12px',
+        height: 36, padding: '0 10px',
         background: T.panel, border: `1px solid ${T.rule}`,
         color: T.ink, fontFamily: "'DM Mono', monospace",
         fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase',
         cursor: 'pointer', boxShadow: `2px 2px 0 ${T.rule}`, transition: 'all 0.1s',
         flexShrink: 0, whiteSpace: 'nowrap',
+        alignItems: 'center', justifyContent: 'center',
+        display: hideOnMobile ? undefined : 'flex',
       }}
       onMouseEnter={(e) => { e.currentTarget.style.transform = 'translate(1px,1px)'; e.currentTarget.style.boxShadow = `1px 1px 0 ${T.rule}` }}
       onMouseLeave={(e) => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = `2px 2px 0 ${T.rule}` }}
@@ -138,14 +143,15 @@ export default function EditorTopbar({ left, right }) {
   return (
     <div
       style={{
-        minHeight: 56, zIndex: 50, position: 'relative',
+        height: 52, zIndex: 50, position: 'relative',
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         background: T.panel,
         borderBottom: `1px solid ${T.rule}`,
-        padding: '0 12px',
+        padding: '0 10px',
         fontFamily: "'DM Mono', monospace",
         flexShrink: 0,
-        gap: 8,
+        gap: 6,
+        overflow: 'hidden',
       }}
     >
       {/* top accent gradient line */}
@@ -154,17 +160,17 @@ export default function EditorTopbar({ left, right }) {
         background: `linear-gradient(90deg, transparent, ${T.accent}66, transparent)`,
       }} />
 
-      {/* Left slot: Logo + controls */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+      {/* Left slot: Logo + controls — can shrink/clip if needed */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0, overflow: 'hidden' }}>
         <Logo />
         <div style={{ width: 1, height: 18, background: T.rule, flexShrink: 0 }} />
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, overflow: 'visible' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 5, overflow: 'hidden' }}>
           {left}
         </div>
       </div>
 
-      {/* Right slot: actions */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+      {/* Right slot: actions — never shrink, always visible */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0 }}>
         {right}
       </div>
 

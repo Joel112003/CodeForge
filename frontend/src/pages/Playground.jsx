@@ -55,22 +55,27 @@ export default function Playground() {
         left={
           <>
             <LanguageSelector value={language} onChange={handleLanguageChange} />
-            <Badge status={status} />
-            {/* guest badge */}
-            <span style={{
+            {/* Badge & guest pill — hidden on mobile to prevent cramming */}
+            <span className="hidden sm:block"><Badge status={status} /></span>
+            <span className="hidden md:inline" style={{
               fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase',
               color: '#92400E', border: '1px solid #F5D87A', background: '#FFFBEB',
-              padding: '3px 8px',
+              padding: '3px 8px', whiteSpace: 'nowrap',
             }}>
-              guest mode
+              guest
             </span>
           </>
         }
         right={
           <>
             <ConnectionBadge connected={connected} />
-            <TopbarOutlineBtn onClick={() => navigate('/login')}>Sign in to save</TopbarOutlineBtn>
-            <TopbarOutlineBtn onClick={() => { setOutputLines([]); setStatus('IDLE') }}>Clear</TopbarOutlineBtn>
+            {/* "Sign in to save" — text hidden on mobile, show short label */}
+            <TopbarOutlineBtn hideOnMobile onClick={() => navigate('/login')}>
+              Save
+            </TopbarOutlineBtn>
+            <TopbarOutlineBtn onClick={() => { setOutputLines([]); setStatus('IDLE') }}>
+              Clear
+            </TopbarOutlineBtn>
             <RunButton status={status} onClick={handleRun} />
           </>
         }
@@ -78,13 +83,13 @@ export default function Playground() {
 
       {/* ── GUEST BANNER ───────────────────────────────────────────────────── */}
       <div
-        className="flex flex-wrap items-center justify-between gap-2 px-4"
         style={{
-          minHeight: 36, flexShrink: 0, zIndex: 2,
-          padding: '8px 16px',
+          flexShrink: 0, zIndex: 2,
+          padding: '6px 16px',
           background: T.panelDeep,
           borderBottom: `1px solid ${T.rule}`,
           borderLeft: `3px solid ${T.accent}`,
+          display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 6,
         }}
       >
         <span style={{ fontSize: 10, color: T.faint, letterSpacing: '0.02em' }}>
@@ -104,12 +109,25 @@ export default function Playground() {
       </div>
 
       {/* ── WORKSPACE ──────────────────────────────────────────────────────── */}
+      {/*
+        Mobile: column layout — editor takes flex-1 (fills available space),
+                terminal takes a fixed 220px slice at the bottom.
+        Desktop (lg): row layout — editor 62%, terminal 38%.
+      */}
       <div
-        className="flex-1 flex flex-col lg:flex-row gap-2 overflow-hidden"
-        style={{ padding: 8, zIndex: 1, position: 'relative' }}
+        className="flex-1 flex flex-col lg:flex-row overflow-hidden"
+        style={{ padding: 8, gap: 8, zIndex: 1, position: 'relative' }}
       >
-        {/* Editor pane — full on mobile, ~60% on desktop */}
-        <div className="flex-1 min-h-[220px] overflow-hidden" style={{ border: `1px solid ${T.rule}` }}>
+        {/* ── Editor pane ── */}
+        <div
+          className="lg:flex-1"
+          style={{
+            flex: '1 1 0',          /* grow and shrink freely on mobile */
+            minHeight: 0,           /* critical: lets flex children shrink below content size */
+            overflow: 'hidden',
+            border: `1px solid ${T.rule}`,
+          }}
+        >
           <CodeEditor
             code={code}
             language={language}
@@ -117,19 +135,26 @@ export default function Playground() {
           />
         </div>
 
-        {/* Terminal pane — fixed height on mobile, 38% on desktop */}
+        {/* ── Terminal pane ── */}
         <div
-          className="overflow-hidden"
-          style={{ border: `1px solid ${T.rule}`, height: 260, flexShrink: 0 }}
+          className="lg:block"
+          style={{
+            /* Mobile: fixed 200px height; Desktop: 38% width */
+            height: 200,
+            flexShrink: 0,
+            overflow: 'hidden',
+            border: `1px solid ${T.rule}`,
+          }}
         >
-          <div className="lg:hidden h-full">
+          {/* Desktop override via inline style — lg breakpoint sets width, clears height */}
+          <style>{`
+            @media (min-width: 1024px) {
+              .terminal-pane { width: 38% !important; height: 100% !important; flex-shrink: 0; }
+            }
+          `}</style>
+          <div className="terminal-pane h-full">
             <Terminal lines={outputLines} status={status} />
           </div>
-        </div>
-
-        {/* Terminal pane — desktop only */}
-        <div className="hidden lg:block overflow-hidden" style={{ width: '38%', border: `1px solid ${T.rule}` }}>
-          <Terminal lines={outputLines} status={status} />
         </div>
       </div>
 

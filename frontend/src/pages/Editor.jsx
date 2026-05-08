@@ -64,7 +64,6 @@ export default function Editor() {
   useEffect(() => {
     if (!roomId || !user) return
     // userId = UUID (for DB); displayName = email (shown in member list)
-    // No setTimeout needed — useSocket buffers the join until the socket is connected
     joinRoom(roomId, user.id, user.email)
   }, [roomId, user, joinRoom])
 
@@ -96,13 +95,13 @@ export default function Editor() {
         left={
           <>
             <LanguageSelector value={language} onChange={handleLanguageChange} />
-            <Badge status={status} />
-            {/* room id pill */}
+            {/* Badge & room pill — hidden on mobile to prevent cramming */}
+            <span className="hidden sm:block"><Badge status={status} /></span>
             {roomId && (
-              <span style={{
+              <span className="hidden md:inline" style={{
                 fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase',
                 color: T.muted, border: `1px solid ${T.rule}`,
-                background: T.deep, padding: '3px 8px',
+                background: T.deep, padding: '3px 8px', whiteSpace: 'nowrap',
               }}>
                 {roomId.slice(0, 8)}…
               </span>
@@ -119,43 +118,57 @@ export default function Editor() {
       />
 
       {/* ── WORKSPACE ──────────────────────────────────────────────────────── */}
+      {/*
+        Mobile (column): editor grows to fill, terminal fixed 200px, member list fixed 140px.
+        Desktop (lg, row): editor flex-1, right panel 40% with terminal + member list stacked.
+      */}
       <div
-        className="flex-1 flex flex-col lg:flex-row gap-2 overflow-hidden"
-        style={{ padding: 8, zIndex: 1, position: 'relative' }}
+        className="flex-1 flex flex-col lg:flex-row overflow-hidden"
+        style={{ padding: 8, gap: 8, zIndex: 1, position: 'relative' }}
       >
-        {/* Editor — full on mobile, 60% on desktop */}
-        <div className="flex-1 min-h-[220px] overflow-hidden">
+        {/* ── Editor pane ── always visible, grows to fill remaining space */}
+        <div
+          style={{
+            flex: '1 1 0',
+            minHeight: 0,
+            overflow: 'hidden',
+            border: `1px solid ${T.rule}`,
+          }}
+        >
           <CodeEditor code={code} language={language} onChange={handleCodeChange} />
         </div>
 
-        {/* Right panel — fixed height on mobile, 40% on desktop */}
+        {/* ── Right panel (mobile: stacked below editor) ── */}
+        {/* Terminal — always rendered, 200px on mobile, auto on desktop */}
         <div
-          className="flex flex-col gap-2 overflow-hidden"
-          style={{ height: 280, flexShrink: 0 }}
+          style={{
+            flexShrink: 0,
+            overflow: 'hidden',
+            border: `1px solid ${T.rule}`,
+            height: 200,          /* mobile fixed height */
+          }}
         >
-          <div className="lg:hidden flex flex-col gap-2 h-full">
-            {/* Terminal (mobile) */}
-            <div className="flex-1 overflow-hidden">
-              <Terminal lines={outputLines} status={status} />
+          <style>{`
+            @media (min-width: 1024px) {
+              .editor-right-panel { display: flex !important; flex-direction: column; width: 40% !important; height: 100% !important; flex-shrink: 0; gap: 8px; border: none !important; background: transparent !important; }
+              .editor-terminal    { flex: 1 1 0; min-height: 0; border: 1px solid ${T.rule}; overflow: hidden; }
+              .editor-members     { height: 192px; flex-shrink: 0; border: 1px solid ${T.rule}; overflow: hidden; }
+              .editor-terminal-mobile { height: 100%; }
+              .editor-members-mobile  { display: none !important; }
+            }
+          `}</style>
+          <div className="editor-right-panel h-full" style={{ display: 'contents' }}>
+            <div className="editor-terminal" style={{ height: '100%', overflow: 'hidden' }}>
+              <div className="editor-terminal-mobile" style={{ height: '100%' }}>
+                <Terminal lines={outputLines} status={status} />
+              </div>
             </div>
             {roomId && (
-              <div style={{ height: 140, flexShrink: 0 }}>
+              <div className="editor-members editor-members-mobile" style={{ height: 140, flexShrink: 0, overflow: 'hidden', border: `1px solid ${T.rule}`, marginTop: 8 }}>
                 <MemberList members={members} roomId={roomId} />
               </div>
             )}
           </div>
-        </div>
-
-        {/* Right panel — desktop only (side by side) */}
-        <div className="hidden lg:flex flex-col gap-2 overflow-hidden" style={{ width: '40%' }}>
-          <div className="flex-1 overflow-hidden">
-            <Terminal lines={outputLines} status={status} />
-          </div>
-          {roomId && (
-            <div style={{ height: 192, flexShrink: 0 }}>
-              <MemberList members={members} roomId={roomId} />
-            </div>
-          )}
         </div>
       </div>
 
