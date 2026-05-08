@@ -34,7 +34,7 @@ function PageShell({ children }) {
       />
 
       <div
-        className="relative min-h-screen flex items-center justify-center px-6"
+        className="relative min-h-screen flex items-center justify-center px-4 py-10"
         style={{ background: "#F8F4ED", fontFamily: "'DM Mono', monospace", zIndex: 1 }}
       >
         {/* Saffron glow */}
@@ -166,10 +166,11 @@ function InvalidLinkScreen() {
         <motion.div
           variants={rise}
           style={{
-            background: "#FAF7F0", border: "1px solid #E0D8CA",
+            background: "#FAF7F0",
+            border: "1px solid #E0D8CA",
             borderLeft: "4px solid #C04A1A",
             boxShadow: "4px 4px 0 #E0D8CA",
-            padding: "40px 44px",
+            padding: "clamp(24px, 5vw, 40px) clamp(20px, 5vw, 44px)",
             textAlign: "center",
           }}
         >
@@ -290,7 +291,7 @@ export default function ResetPassword() {
             border: "1px solid #E0D8CA",
             borderLeft: "4px solid #C04A1A",
             boxShadow: "4px 4px 0 #E0D8CA",
-            padding: "40px 44px",
+            padding: "clamp(24px, 5vw, 40px) clamp(20px, 5vw, 44px)",
           }}
         >
           <AnimatePresence mode="wait">

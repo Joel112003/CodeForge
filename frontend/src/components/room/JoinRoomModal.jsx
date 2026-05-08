@@ -154,7 +154,7 @@ export default function JoinRoomModal({ open, onClose }) {
                 boxShadow: `6px 6px 0 ${T.accent2}22, 0 24px 48px rgba(26,18,8,0.18)`,
                 pointerEvents: 'auto',
                 fontFamily: "'DM Mono', monospace",
-                margin: '0 16px',
+                margin: '0 12px',
               }}
             >
               {/* ── header ── */}

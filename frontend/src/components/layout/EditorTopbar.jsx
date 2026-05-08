@@ -1,4 +1,4 @@
-import {useNavigate } from "react-router-dom"
+import { useNavigate } from "react-router-dom"
 
 
 const T = {
@@ -18,17 +18,17 @@ function Logo() {
   return (
     <div
       onClick={() => navigate('/dashboard')}
-      style={{ display: 'flex', alignItems: 'center', gap: 10, marginRight: 4, cursor: 'pointer' }}
+      style={{ display: 'flex', alignItems: 'center', gap: 8, marginRight: 4, cursor: 'pointer', flexShrink: 0 }}
     >
       <div style={{
-        width: 36, height: 36,
+        width: 32, height: 32,
         background: T.accent,
         boxShadow: `2px 2px 0 ${T.accent2}`,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
       }}>
         <span style={{ fontFamily: "'Spectral', serif", fontWeight: 700, color: '#FAF7F0', fontSize: '1rem', fontStyle: 'italic' }}>C</span>
       </div>
-      <span style={{ fontSize: 14, letterSpacing: '0.04em', color: T.ink, fontWeight: 500 }}>
+      <span className="hidden sm:inline" style={{ fontSize: 13, letterSpacing: '0.04em', color: T.ink, fontWeight: 500 }}>
         Code<span style={{ color: T.accent }}>Forge</span>
       </span>
     </div>
@@ -39,17 +39,18 @@ function Logo() {
 export function ConnectionBadge({ connected }) {
   return (
     <div style={{
-      display: 'flex', alignItems: 'center', gap: 7,
-      padding: '6px 14px',
+      display: 'flex', alignItems: 'center', gap: 6,
+      padding: '5px 10px',
       background: T.panelDeep,
       border: `1px solid ${T.rule}`,
+      flexShrink: 0,
     }}>
       <span style={{
         width: 8, height: 8, borderRadius: '50%', flexShrink: 0,
         background: connected ? '#059669' : '#DC2626',
         ...(connected ? {} : { animation: 'cf-pulse 1.4s ease-in-out infinite' }),
       }} />
-      <span style={{ fontSize: 11, color: connected ? '#065F46' : '#991B1B', letterSpacing: '0.06em' }}>
+      <span className="hidden sm:inline" style={{ fontSize: 11, color: connected ? '#065F46' : '#991B1B', letterSpacing: '0.06em' }}>
         {connected ? 'connected' : 'connecting'}
       </span>
     </div>
@@ -76,18 +77,19 @@ export function RunButton({ status, onClick }) {
       onClick={onClick}
       disabled={running}
       style={{
-        height: 44, padding: '0 26px', minWidth: 100,
+        height: 40, padding: '0 18px', minWidth: 80,
         background: running
           ? T.panelDeep
           : `linear-gradient(135deg, #E8501E, ${T.accent} 60%, #A53D12)`,
         border: `1px solid ${running ? T.rule : T.accent}`,
         color: running ? T.faint : '#fff',
         fontFamily: "'DM Mono', monospace",
-        fontSize: 12, letterSpacing: '0.1em', textTransform: 'uppercase',
+        fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase',
         cursor: running ? 'not-allowed' : 'pointer',
-        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 9,
+        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
         boxShadow: running ? 'none' : `2px 2px 0 ${T.accent2}`,
         position: 'relative', overflow: 'hidden', transition: 'all 0.1s',
+        flexShrink: 0,
       }}
       onMouseEnter={(e) => { if (!running) { e.currentTarget.style.transform = 'translate(1px,1px)'; e.currentTarget.style.boxShadow = `1px 1px 0 ${T.accent2}` } }}
       onMouseLeave={(e) => { if (!running) { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = `2px 2px 0 ${T.accent2}` } }}
@@ -96,7 +98,7 @@ export function RunButton({ status, onClick }) {
       {running ? (
         <>
           <span style={{ width: 7, height: 7, borderRadius: '50%', background: T.accent, animation: 'cf-pulse 1.2s ease-in-out infinite' }} />
-          {status === 'QUEUED' ? 'Queued' : 'Running'}
+          <span className="hidden sm:inline">{status === 'QUEUED' ? 'Queued' : 'Running'}</span>
         </>
       ) : (
         <>
@@ -114,11 +116,12 @@ export function TopbarOutlineBtn({ onClick, children }) {
     <button
       onClick={onClick}
       style={{
-        height: 44, padding: '0 18px',
+        height: 40, padding: '0 12px',
         background: T.panel, border: `1px solid ${T.rule}`,
         color: T.ink, fontFamily: "'DM Mono', monospace",
-        fontSize: 12, letterSpacing: '0.1em', textTransform: 'uppercase',
+        fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase',
         cursor: 'pointer', boxShadow: `2px 2px 0 ${T.rule}`, transition: 'all 0.1s',
+        flexShrink: 0, whiteSpace: 'nowrap',
       }}
       onMouseEnter={(e) => { e.currentTarget.style.transform = 'translate(1px,1px)'; e.currentTarget.style.boxShadow = `1px 1px 0 ${T.rule}` }}
       onMouseLeave={(e) => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = `2px 2px 0 ${T.rule}` }}
@@ -135,14 +138,15 @@ export default function EditorTopbar({ left, right }) {
   return (
     <div
       style={{
-        height: 64, zIndex: 50, position: 'relative',
+        minHeight: 56, zIndex: 50, position: 'relative',
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         background: T.panel,
         borderBottom: `1px solid ${T.rule}`,
-        padding: '0 20px',
+        padding: '0 12px',
         fontFamily: "'DM Mono', monospace",
         flexShrink: 0,
-        overflow: 'visible',
+        overflow: 'hidden',
+        gap: 8,
       }}
     >
       {/* top accent gradient line */}
@@ -152,14 +156,16 @@ export default function EditorTopbar({ left, right }) {
       }} />
 
       {/* Left slot: Logo + controls */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, overflow: 'hidden', minWidth: 0 }}>
         <Logo />
-        <div style={{ width: 1, height: 18, background: T.rule }} />
-        {left}
+        <div style={{ width: 1, height: 18, background: T.rule, flexShrink: 0 }} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, overflow: 'hidden' }}>
+          {left}
+        </div>
       </div>
 
       {/* Right slot: actions */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
         {right}
       </div>
 

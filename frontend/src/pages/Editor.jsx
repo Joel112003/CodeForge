@@ -119,22 +119,38 @@ export default function Editor() {
 
       {/* ── WORKSPACE ──────────────────────────────────────────────────────── */}
       <div
-        className="flex-1 flex gap-2 overflow-hidden"
+        className="flex-1 flex flex-col lg:flex-row gap-2 overflow-hidden"
         style={{ padding: 8, zIndex: 1, position: 'relative' }}
       >
-        {/* Editor — 60% */}
-        <div className="flex-1 overflow-hidden">
+        {/* Editor — full on mobile, 60% on desktop */}
+        <div className="flex-1 min-h-[220px] overflow-hidden">
           <CodeEditor code={code} language={language} onChange={handleCodeChange} />
         </div>
 
-        {/* Right panel — 40% */}
-        <div className="flex flex-col gap-2 overflow-hidden" style={{ width: '40%' }}>
-          {/* Terminal */}
+        {/* Right panel — fixed height on mobile, 40% on desktop */}
+        <div
+          className="flex flex-col gap-2 overflow-hidden"
+          style={{ height: 280, flexShrink: 0 }}
+          // On lg screens this becomes width-based via the className override below
+        >
+          <div className="lg:hidden flex flex-col gap-2 h-full">
+            {/* Terminal (mobile) */}
+            <div className="flex-1 overflow-hidden">
+              <Terminal lines={outputLines} status={status} />
+            </div>
+            {roomId && (
+              <div style={{ height: 140, flexShrink: 0 }}>
+                <MemberList members={members} roomId={roomId} />
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Right panel — desktop only (side by side) */}
+        <div className="hidden lg:flex flex-col gap-2 overflow-hidden" style={{ width: '40%' }}>
           <div className="flex-1 overflow-hidden">
             <Terminal lines={outputLines} status={status} />
           </div>
-
-          {/* Members panel */}
           {roomId && (
             <div style={{ height: 192, flexShrink: 0 }}>
               <MemberList members={members} roomId={roomId} />

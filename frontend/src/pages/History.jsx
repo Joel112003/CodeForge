@@ -137,14 +137,15 @@ function HistoryItem({ item, isSelected, detail, detailLoading, onSelect, onReru
           background: isSelected ? T.panel : hovered ? '#F5F0E8' : T.panel,
           border: `1px solid ${isSelected ? T.accent : T.rule}`,
           borderLeft: `3px solid ${isSelected ? T.accent : hovered ? T.accent : T.rule}`,
-          padding: '14px 20px',
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '12px 14px',
+          display: 'flex', flexDirection: 'column', gap: 8,
           cursor: 'pointer',
           transition: 'all 0.15s',
           borderBottom: isSelected ? 'none' : undefined,
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+        {/* top: language badge + code preview */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
           {/* language badge */}
           <span style={{
             fontSize: 9, fontFamily: "'DM Mono', monospace",
@@ -163,13 +164,14 @@ function HistoryItem({ item, isSelected, detail, detailLoading, onSelect, onReru
             fontFamily: "'DM Mono', monospace", fontSize: 12,
             color: T.muted,
             overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-            maxWidth: 360,
+            flex: 1, minWidth: 0,
           }}>
             {item.code?.split('\n')[0]}
           </span>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexShrink: 0 }}>
+        {/* bottom: meta row */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
           <span style={{ fontSize: 10, color: T.faint }}>
             {new Date(item.created_at).toLocaleDateString()}
           </span>
@@ -184,7 +186,7 @@ function HistoryItem({ item, isSelected, detail, detailLoading, onSelect, onReru
               color: T.accent, background: 'none', border: 'none',
               cursor: 'pointer', letterSpacing: '0.06em',
               textDecoration: 'underline', textUnderlineOffset: 2,
-              padding: 0,
+              padding: 0, marginLeft: 'auto',
             }}
           >
             Re-run
@@ -211,7 +213,7 @@ function HistoryItem({ item, isSelected, detail, detailLoading, onSelect, onReru
               {detailLoading ? (
                 <SkeletonHistoryRows count={2} loading />
               ) : (
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 16 }}>
                   {/* Code */}
                   <div>
                     <div style={{

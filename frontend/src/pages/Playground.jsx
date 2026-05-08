@@ -78,16 +78,17 @@ export default function Playground() {
 
       {/* ── GUEST BANNER ───────────────────────────────────────────────────── */}
       <div
-        className="flex items-center justify-between px-4"
+        className="flex flex-wrap items-center justify-between gap-2 px-4"
         style={{
-          height: 36, flexShrink: 0, zIndex: 2,
+          minHeight: 36, flexShrink: 0, zIndex: 2,
+          padding: '8px 16px',
           background: T.panelDeep,
           borderBottom: `1px solid ${T.rule}`,
           borderLeft: `3px solid ${T.accent}`,
         }}
       >
         <span style={{ fontSize: 10, color: T.faint, letterSpacing: '0.02em' }}>
-          Running in guest mode — executions are not saved and rooms are unavailable
+          Guest mode — executions not saved, rooms unavailable
         </span>
         <button
           onClick={() => navigate('/register')}
@@ -95,7 +96,7 @@ export default function Playground() {
             fontSize: 10, fontFamily: "'DM Mono', monospace",
             color: T.accent, background: 'none', border: 'none',
             cursor: 'pointer', letterSpacing: '0.06em',
-            textDecoration: 'underline', textUnderlineOffset: 2, padding: 0,
+            textDecoration: 'underline', textUnderlineOffset: 2, padding: 0, whiteSpace: 'nowrap',
           }}
         >
           Create free account →
@@ -104,11 +105,11 @@ export default function Playground() {
 
       {/* ── WORKSPACE ──────────────────────────────────────────────────────── */}
       <div
-        className="flex-1 flex gap-2 overflow-hidden"
+        className="flex-1 flex flex-col lg:flex-row gap-2 overflow-hidden"
         style={{ padding: 8, zIndex: 1, position: 'relative' }}
       >
-        {/* Editor pane */}
-        <div className="flex-1 overflow-hidden" style={{ border: `1px solid ${T.rule}` }}>
+        {/* Editor pane — full on mobile, ~60% on desktop */}
+        <div className="flex-1 min-h-[220px] overflow-hidden" style={{ border: `1px solid ${T.rule}` }}>
           <CodeEditor
             code={code}
             language={language}
@@ -116,8 +117,18 @@ export default function Playground() {
           />
         </div>
 
-        {/* Terminal pane */}
-        <div className="overflow-hidden" style={{ width: '38%', border: `1px solid ${T.rule}` }}>
+        {/* Terminal pane — fixed height on mobile, 38% on desktop */}
+        <div
+          className="overflow-hidden"
+          style={{ border: `1px solid ${T.rule}`, height: 260, flexShrink: 0 }}
+        >
+          <div className="lg:hidden h-full">
+            <Terminal lines={outputLines} status={status} />
+          </div>
+        </div>
+
+        {/* Terminal pane — desktop only */}
+        <div className="hidden lg:block overflow-hidden" style={{ width: '38%', border: `1px solid ${T.rule}` }}>
           <Terminal lines={outputLines} status={status} />
         </div>
       </div>

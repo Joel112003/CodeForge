@@ -27,7 +27,7 @@ const Logo = () => (
 );
 
 const LeftPanel = () => (
-  <div className="w-80 flex-shrink-0 flex flex-col justify-between p-9 relative overflow-hidden z-[2] bg-[#FAF7F0] border-r border-[#E0D8CA]">
+  <div className="hidden md:flex w-80 flex-shrink-0 flex-col justify-between p-9 relative overflow-hidden z-[2] bg-[#FAF7F0] border-r border-[#E0D8CA]">
     <div className="absolute top-0 left-[18px] w-px h-full bg-[linear-gradient(to_bottom,transparent,#E0D8CA_20%,#E0D8CA_80%,transparent)]" />
     <div className="absolute pointer-events-none -top-20 -right-16 w-[200px] h-[200px] bg-[radial-gradient(ellipse_at_top_right,rgba(192,74,26,0.09),transparent_70%)]" />
     <div className="absolute pointer-events-none bottom-0 left-0 w-[200px] h-[200px] bg-[radial-gradient(ellipse_at_bottom_left,rgba(192,74,26,0.07),transparent_70%)]" />
@@ -158,8 +158,8 @@ export default function CodeForge404() {
         @keyframes scan       { from{top:0} to{top:100%} }
         @keyframes pulse-dot  { 0%,100%{opacity:.7;transform:scale(1)} 50%{opacity:.2;transform:scale(2.2)} }
       `}</style>
-      <div className="min-h-screen bg-[#F8F4ED] flex items-center justify-center">
-        <div className="flex relative overflow-hidden w-full max-w-4xl min-h-[600px] border border-[#E0D8CA] shadow-[6px_6px_0_#E0D8CA]">
+      <div className="min-h-screen bg-[#F8F4ED] flex items-start md:items-center justify-center p-4 md:p-8">
+        <div className="flex flex-col md:flex-row relative overflow-hidden w-full max-w-4xl md:min-h-[600px] border border-[#E0D8CA] shadow-[6px_6px_0_#E0D8CA]">
           <Noise />
           <Scanline />
           <LeftPanel />

@@ -9,6 +9,7 @@ const FONTS = `
   @import url('https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,300;0,400;0,600;0,700;1,300;1,400;1,600&family=DM+Mono:wght@300;400;500&display=swap');
 `;
 
+
 const stagger = {
   hidden: { opacity: 0 },
   visible: { opacity: 1, transition: { staggerChildren: 0.1 } },
@@ -157,7 +158,7 @@ export default function Landing() {
           id="hero"
           ref={heroRef}
           style={{ opacity: heroOpacity }}
-          className="relative z-10 grid min-h-[90vh] grid-cols-1 gap-0 px-8 py-20 lg:grid-cols-12 lg:px-16 lg:py-0"
+          className="relative z-10 grid grid-cols-1 gap-0 px-5 py-14 sm:px-8 sm:py-20 lg:min-h-[90vh] lg:grid-cols-12 lg:px-16 lg:py-0"
         >
           <div className="pointer-events-none absolute left-16 top-0 hidden h-full w-px bg-[linear-gradient(to_bottom,transparent,#E0D8CA_20%,#E0D8CA_80%,transparent)] lg:block" />
           <div className="pointer-events-none absolute right-[15%] top-[10%] h-90 w-120 bg-[radial-gradient(ellipse,rgba(192,74,26,0.07)_0%,transparent_70%)] blur-2xl" />
@@ -167,7 +168,7 @@ export default function Landing() {
             variants={stagger}
             initial="hidden"
             animate="visible"
-            className="flex flex-col justify-center gap-8 py-20 lg:col-span-7 lg:pl-12 lg:pr-16"
+            className="flex flex-col justify-center gap-6 sm:gap-8 py-4 lg:py-20 lg:col-span-7 lg:pl-12 lg:pr-16"
           >
             <motion.div variants={rise} className="flex items-center gap-3">
               <span className="block h-px w-5 bg-[#C04A1A]" />
@@ -177,12 +178,12 @@ export default function Landing() {
             </motion.div>
 
             <motion.div variants={rise}>
-              <h1 className="font-['Spectral'] text-[clamp(3.2rem,6vw,5.5rem)] font-light leading-[0.9] tracking-[-0.01em] text-[#1A1208]">
+              <h1 className="font-['Spectral'] text-[clamp(2.8rem,8vw,5.5rem)] font-light leading-[0.9] tracking-[-0.01em] text-[#1A1208]">
                 Write Code.
                 <br />
                 <em className="font-bold italic text-[#C04A1A]">Run Anywhere.</em>
               </h1>
-              <div className="mt-4 h-0.5 w-45 bg-[linear-gradient(to_right,#C04A1A,rgba(192,74,26,0.2))]" />
+              <div className="mt-4 h-0.5 w-36 sm:w-45 bg-[linear-gradient(to_right,#C04A1A,rgba(192,74,26,0.2))]" />
             </motion.div>
 
             <motion.p
@@ -208,19 +209,19 @@ export default function Landing() {
 
             <motion.div
               variants={rise}
-              className="mt-2 grid grid-cols-3 gap-0 border-t border-[#E0D8CA] pt-7"
+              className="mt-2 grid grid-cols-3 gap-0 border-t border-[#E0D8CA] pt-5 sm:pt-7"
             >
               {STATS.map(({ value, label }, i) => (
                 <div
                   key={label}
                   className={`${i < 2 ? "border-r border-[#E0D8CA]" : ""} ${
-                    i < 2 ? "pr-6" : ""
-                  } ${i > 0 ? "pl-6" : ""}`}
+                    i < 2 ? "pr-3 sm:pr-6" : ""
+                  } ${i > 0 ? "pl-3 sm:pl-6" : ""}`}
                 >
-                  <div className="font-['Spectral'] text-[1.8rem] font-bold leading-none text-[#1A1208]">
+                  <div className="font-['Spectral'] text-[1.4rem] sm:text-[1.8rem] font-bold leading-none text-[#1A1208]">
                     {value}
                   </div>
-                  <div className="mt-1 text-[9px] uppercase tracking-[0.12em] text-[#B0A390]">
+                  <div className="mt-1 text-[8px] sm:text-[9px] uppercase tracking-[0.12em] text-[#B0A390]">
                     {label}
                   </div>
                 </div>
@@ -229,13 +230,13 @@ export default function Landing() {
           </motion.div>
 
           {/* ── RIGHT: Terminal Card ── */}
-          <div className="hidden items-center justify-center lg:col-span-5 lg:flex">
+          <div className="flex items-center justify-center py-6 lg:col-span-5 lg:py-0">
             <motion.div
               style={{ y: termY }}
               initial={{ opacity: 0, x: 28 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.3, duration: 0.75, ease: [0.16, 1, 0.3, 1] }}
-              className="w-full max-w-105"
+              className="w-full max-w-sm lg:max-w-105"
             >
               <div className="relative border border-[#D4C9B0] border-l-4 border-l-[#C04A1A] bg-[#FAF7F0] shadow-[6px_6px_0_#E0D8CA]">
                 <div className="flex items-center justify-between border-b border-[#E8E0D0] bg-[#F5F0E8] px-4 py-2.5">
@@ -408,7 +409,7 @@ export default function Landing() {
             </motion.div>
 
             <motion.div
-              className="grid gap-0 lg:grid-cols-3"
+              className="grid gap-0 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
               variants={stagger}
               initial="hidden"
               whileInView="visible"
@@ -418,8 +419,8 @@ export default function Landing() {
                 <motion.article
                   key={f.index}
                   variants={rise}
-                  className={`group relative cursor-default overflow-hidden border-t-[3px] border-transparent bg-[#FAF7F0] px-10 py-9 transition-all duration-200 hover:border-[#C04A1A] hover:bg-[#FDF9F3] ${
-                    i < 2 ? "border-r border-[#E0D8CA]" : ""
+                  className={`group relative cursor-default overflow-hidden border-t-[3px] border-transparent bg-[#FAF7F0] px-7 py-8 sm:px-10 sm:py-9 transition-all duration-200 hover:border-[#C04A1A] hover:bg-[#FDF9F3] ${
+                    i < 2 ? "sm:border-r border-b sm:border-b-0 border-[#E0D8CA]" : ""
                   }`}
                 >
                   <div className="mb-6 flex items-center gap-3">

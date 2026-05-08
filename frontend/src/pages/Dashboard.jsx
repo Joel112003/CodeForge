@@ -70,7 +70,7 @@ export default function Dashboard() {
               )}
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))' }}>
               <ActionCard
                 label="New Session"
                 desc="Spin up a fresh isolated room"
@@ -113,7 +113,7 @@ function ActionCard({ label, desc, icon, accent, disabled, onClick, divider }) {
       onMouseLeave={() => setHovered(false)}
       style={{
         display: 'flex', flexDirection: 'column', gap: 14,
-        padding: '28px 32px',
+        padding: 'clamp(20px, 4vw, 28px) clamp(18px, 4vw, 32px)',
         background: hovered
           ? accent ? `linear-gradient(135deg, #E8501E, ${T.accent} 60%, #A53D12)` : '#F5F0E8'
           : accent ? `linear-gradient(135deg, #D94718, ${T.accent} 60%, #8C3310)` : T.panel,

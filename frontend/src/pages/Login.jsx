@@ -87,7 +87,7 @@ export default function Login() {
 
             {/* Heading */}
             <motion.div variants={rise} className="mb-9">
-              <h2 className="font-['Spectral'] text-[2.8rem] font-light leading-[1.05] text-[#1A1208]">
+              <h2 className="font-['Spectral'] text-[clamp(2rem,7vw,2.8rem)] font-light leading-[1.05] text-[#1A1208]">
                 Welcome
                 <br />
                 <span className="font-bold italic">back.</span>
