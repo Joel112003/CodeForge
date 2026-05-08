@@ -12,7 +12,7 @@ export default function useSocket({
   onCodeUpdated,
 } = {}) {
   const socketRef    = useRef(null)
-  const sessionIdRef = useRef(null) // tracks the active run's session ID
+  const sessionIdRef = useRef(null)
   const [connected, setConnected] = useState(false)
 
   // Keep refs to the latest callbacks so socket listeners never go stale
@@ -31,6 +31,9 @@ export default function useSocket({
   useEffect(() => { onMemberLeftRef.current   = onMemberLeft  })
   useEffect(() => { onCodeUpdatedRef.current  = onCodeUpdated })
 
+  // Buffer a pending join so we can fire it the moment the socket connects
+  const pendingJoinRef = useRef(null)
+
   useEffect(() => {
     const socket = io(API_URL, {
       transports: ['polling', 'websocket'],
@@ -39,13 +42,20 @@ export default function useSocket({
       reconnectionDelay: 1000,
     })
 
-    socket.on('connect',       () => setConnected(true))
+    socket.on('connect', () => {
+      setConnected(true)
+      // Flush any join_room that was called before the socket was ready
+      if (pendingJoinRef.current) {
+        socket.emit('join_room', pendingJoinRef.current)
+        pendingJoinRef.current = null
+      }
+    })
+
     socket.on('disconnect',    () => setConnected(false))
     socket.on('connect_error', (err) => console.error('[socket] error:', err.message))
 
     // Output: only forward events that belong to this session
     socket.on('output', (data) => {
-      // If the event carries a sessionId, it must match our active run
       if (data?.sessionId && data.sessionId !== sessionIdRef.current) return
       onOutputRef.current?.(data)
     })
@@ -53,11 +63,9 @@ export default function useSocket({
     // Status: normalise the payload — server sends { status, sessionId } or a plain string
     socket.on('status', (payload) => {
       if (typeof payload === 'object' && payload !== null) {
-        // Drop events that belong to a different run
         if (payload.sessionId && payload.sessionId !== sessionIdRef.current) return
         onStatusRef.current?.(payload.status)
       } else {
-        // Legacy plain-string status (room sync, etc.) — always forward
         onStatusRef.current?.(payload)
       }
     })
@@ -72,14 +80,21 @@ export default function useSocket({
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const runCode = useCallback((language, code, roomId) => {
-    // Generate a fresh sessionId for every run so outputs are strictly scoped
     const sessionId = `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
     sessionIdRef.current = sessionId
     socketRef.current?.emit('run_code', { language, code, roomId, sessionId })
   }, [])
 
   const joinRoom = useCallback((roomId, userId, displayName) => {
-    socketRef.current?.emit('join_room', { roomId, userId, displayName })
+    const payload = { roomId, userId, displayName }
+    const socket  = socketRef.current
+    if (socket?.connected) {
+      // Socket already up — emit right away
+      socket.emit('join_room', payload)
+    } else {
+      // Socket not ready yet — buffer it; the connect handler will flush it
+      pendingJoinRef.current = payload
+    }
   }, [])
 
   const sendCodeChange = useCallback((roomId, code, language) => {

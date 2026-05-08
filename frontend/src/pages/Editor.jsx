@@ -45,26 +45,27 @@ export default function Editor() {
       if (normalized.data) setOutputLines((prev) => [...prev, normalized])
     },
     onStatus:      (s) => setStatus(s),
-    onRoomJoined:  ({ room, members }) => {
-      setMembers(members)
+    onRoomJoined:  ({ room, members: m }) => {
+      setMembers(m || [])
       setCode(room.code || DEFAULT_CODE[room.language] || DEFAULT_CODE.javascript)
       setLanguage(room.language || 'javascript')
       setConnected(true)
     },
-    onMemberJoined: ({ members }) => setMembers(members),
-    onMemberLeft:   ({ members }) => setMembers(members),
-    onCodeUpdated:  ({ code, language }) => {
+    onMemberJoined: ({ members: m }) => setMembers(m || []),
+    onMemberLeft:   ({ members: m }) => setMembers(m || []),
+    onCodeUpdated:  ({ code: c, language: l }) => {
       isRemoteUpdate.current = true
-      setCode(code)
-      setLanguage(language)
+      setCode(c)
+      setLanguage(l)
       setTimeout(() => { isRemoteUpdate.current = false }, 0)
     },
   })
 
   useEffect(() => {
     if (!roomId || !user) return
-    // userId must be the UUID for DB use; email is used for display in the member list
-    setTimeout(() => joinRoom(roomId, user.id, user.email), 500)
+    // userId = UUID (for DB); displayName = email (shown in member list)
+    // No setTimeout needed — useSocket buffers the join until the socket is connected
+    joinRoom(roomId, user.id, user.email)
   }, [roomId, user, joinRoom])
 
   function handleCodeChange(val) {
@@ -131,7 +132,6 @@ export default function Editor() {
         <div
           className="flex flex-col gap-2 overflow-hidden"
           style={{ height: 280, flexShrink: 0 }}
-          // On lg screens this becomes width-based via the className override below
         >
           <div className="lg:hidden flex flex-col gap-2 h-full">
             {/* Terminal (mobile) */}
