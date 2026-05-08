@@ -1,18 +1,16 @@
-
 import { spawn } from "child_process";
 import { writeFileSync, unlinkSync } from "fs";
 import { join } from "path";
 import { tmpdir } from "os";
 import { randomUUID } from "crypto";
 
-const TIMEOUT_MS = 10000; // 10-second hard limit
+const TIMEOUT_MS = 10000;
 
 const RUNNERS = {
   javascript: { cmd: "node", ext: "js" },
   python: { cmd: "python3", ext: "py" },
 };
 
-// Kept for backwards compatibility
 export const Images = {
   javascript: "node:18-alpine",
   python: "python:3.11-alpine",
@@ -32,10 +30,6 @@ export function normalizeLanguage(input) {
   return LANGUAGE_ALIASES[lower] ?? lower;
 }
 
-/**
- * Executes code by spawning a child process.
- * Streams stdout and stderr via the onChunk callback, identical interface to before.
- */
 async function executeCode(language, code, onChunk) {
   const runner = RUNNERS[language];
   if (!runner) throw new Error(`Unsupported language: ${language}`);

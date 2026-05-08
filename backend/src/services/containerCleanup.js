@@ -1,6 +1,4 @@
-// Container cleanup is a no-op in cloud deployments.
-// Code execution now uses the Piston API — there are no local Docker containers to clean up.
-
+// No-op in production: code execution uses child_process, not local Docker.
 export async function cleanupOrphanContainers() {
-  console.log("[cleanup] API execution mode — no local containers to clean up.");
+  console.log("[cleanup] child_process mode — no containers to clean up.");
 }

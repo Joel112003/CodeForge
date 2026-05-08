@@ -513,6 +513,6 @@ CodeForge uses a custom warm parchment design language.
 
 <div align="center">
 
-Built with ♦ by Joel Kunjumon · MIT License
+Built  by Joel Kunjumon · MIT License
 
-</div>
+</div>  

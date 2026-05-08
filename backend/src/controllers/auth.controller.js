@@ -239,3 +239,31 @@ export const refresh = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
+
+export const forgotPassword = async (req, res) => {
+  const { email } = req.body;
+  if (!email) return res.status(400).json({ message: "Email is required" });
+  try {
+    const result = pool.query("SELECT id FROM users WHERE email = $1", [email]);
+    if ((await result).rows.length === 0) {
+      return res.json({ message: "if that email exists , a reset link has been sent." });
+    }
+
+    const userId = result.rows[0].id;
+    const rawToken = crypto.randomBytes(32).toString("hex");
+    const tokenHash = crypto.createHash("sha256").update(rawToken).digest("hex");
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+    await pool.query("UPDATE passwor_reset_tokens SET used_at=NOW() WHERE user_id = $1 AND used_at IS NULL", [userId]);
+    await pool.query("INSERT INTO password_reset_tokens (user_id , token_hash , expires_at) VALUES ($1 , $2 , $3)", [userId, tokenHash, expiresAt]);
+    const resetLink = `${process.env.CLIENT_URL}/reset-password?token=${rawToken}`;
+    await sendPAsswordResetEmail(email, resetLink)
+    return res.json({ message: "If the email exists , a reset link has been sent  " })
+
+
+  } catch (err) {
+    console.error(err)
+    res.status(500).json({ message: "Server error" });
+  }
+
+}
+
