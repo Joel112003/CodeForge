@@ -75,10 +75,8 @@ async function migrate() {
 }
 
 migrate()
+  .then(() => process.exit(0))
   .catch((err) => {
     console.error("[migrate] Migration failed:", err.message);
     process.exit(1);
-  })
-  .finally(() => {
-    pool.end();
   });
