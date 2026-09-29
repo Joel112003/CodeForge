@@ -1,5 +1,7 @@
 # CodeForge
 
+[![CI](https://github.com/Joel112003/CodeForge/actions/workflows/ci.yml/badge.svg)](https://github.com/Joel112003/CodeForge/actions/workflows/ci.yml)
+
 > **A real-time collaborative code execution platform** — write, run, and share code with your team in live sessions backed by a Redis-powered job queue and WebSocket-driven real-time sync.
 
 🔗 **Live Demo:** [code-forge-two.vercel.app](https://code-forge-two.vercel.app)
