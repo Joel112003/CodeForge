@@ -74,6 +74,10 @@ async function revokeRefreshToken(tokenHash) {
 export const register = async (req, res) => {
   const { email, password } = req.body;
 
+  if (typeof email !== "string" || !email.trim() || typeof password !== "string" || password.length < 8) {
+    return res.status(400).json({ message: "Email and password are required; password must be at least 8 characters" });
+  }
+
   try {
     const existingUser = await pool.query(
       "SELECT * FROM users WHERE email = $1",
@@ -112,6 +116,10 @@ export const register = async (req, res) => {
 
 export const login = async (req, res) => {
   const { email, password } = req.body;
+  if (typeof email !== "string" || !email.trim() || typeof password !== "string") {
+    return res.status(400).json({ message: "Email and password are required" });
+  }
+
   const result = await pool.query("SELECT * FROM users WHERE email = $1", [
     email,
   ]);

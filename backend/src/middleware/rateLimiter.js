@@ -3,6 +3,7 @@ import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 100, // limit each IP to 100 requests per windowMs
+  skip: () => process.env.NODE_ENV === "test",
   message: {
     error: "Too many requests from this IP, please try again after 15 minutes",
   },
@@ -19,6 +20,7 @@ const executionLimiter = rateLimit({
 const loginLimiter = rateLimit({
   windowMs: 10 * 60 * 1000, // 10 minutes
   max: 5, // limit each IP to 5 login attempts per windowMs
+  skip: () => process.env.NODE_ENV === "test",
   keyGenerator: (req) => {
     const email = String(req.body?.email || "").toLowerCase().trim();
     const ipKey = ipKeyGenerator(req);
@@ -32,6 +34,7 @@ const loginLimiter = rateLimit({
 const registerLimiter = rateLimit({
   windowMs: 10 * 60 * 1000, // 10 minutes
   max: 5, // limit each IP to 5 registration attempts per windowMs
+  skip: () => process.env.NODE_ENV === "test",
   message: {
     error: "Too many registration attempts, please try again in 10 minutes",
   },
