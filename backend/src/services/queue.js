@@ -28,12 +28,12 @@ export function setIo(io) {
 }
 
 
-export async function enqueueExecution({ language, code, socketId, roomId, userId, sessionId }) {
+export async function enqueueExecution({ language, code, stdin = "", socketId, roomId, userId, sessionId }) {
   const { priority } = await consumeToken(userId);
 
   await executionQueue.add(
     "run",
-    { language, code, socketId, roomId, userId, sessionId, requestedAt: Date.now() },
+    { language, code, stdin, socketId, roomId, userId, sessionId, requestedAt: Date.now() },
     { priority },
   );
 
@@ -43,7 +43,7 @@ export async function enqueueExecution({ language, code, socketId, roomId, userI
 const worker = new Worker(
   "execution",
   async (job) => {
-    const { language, code, socketId, roomId, userId, sessionId } = job.data;
+    const { language, code, stdin = "", socketId, roomId, userId, sessionId } = job.data;
     const normalizedLanguage = normalizeLanguage(language);
     const executionStartedAt = Date.now();
     await recordMetric(MetricNames.QUEUE_TIME, Math.max(0, executionStartedAt - (job.data.requestedAt || job.timestamp)));
@@ -67,7 +67,7 @@ const worker = new Worker(
       return;
     }
 
-    const cached = await cacheGet(normalizedLanguage, code);
+    const cached = await cacheGet(normalizedLanguage, code, stdin);
     if (cached.hit) {
       await recordMetric(MetricNames.CACHE_HITS);
 
@@ -113,7 +113,7 @@ const worker = new Worker(
     try {
       socket?.emit("status", { status: "RUNNING", sessionId });
 
-      const result = await executeCode(normalizedLanguage, code, (chunk, type) => {
+      const result = await executeCode(normalizedLanguage, code, stdin, (chunk, type) => {
         outputChunks.push(chunk);
 
         const payload = { output: chunk, data: chunk, type, sessionId };
@@ -138,7 +138,7 @@ const worker = new Worker(
       }
 
       if (result.status === "COMPLETED") {
-        await cacheSet(normalizedLanguage, code, fullOutput, duration);
+        await cacheSet(normalizedLanguage, code, stdin, fullOutput, duration);
         await recordMetric(MetricNames.EXECUTIONS);
         await recordMetric(MetricNames.QUEUE_COMPLETED);
         circuitBreaker.recordSuccess();

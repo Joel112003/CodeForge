@@ -1,16 +1,4 @@
-/**
- * Circuit Breaker — Fault tolerance for the execution engine.
- *
- * State machine:
- *   CLOSED  →  (failure threshold exceeded)  →  OPEN
- *   OPEN    →  (cooldown elapsed)             →  HALF_OPEN
- *   HALF_OPEN → (probe succeeds)              →  CLOSED
- *   HALF_OPEN → (probe fails)                 →  OPEN
- *
- * Tracks failures over a sliding window (last N executions).
- * When the failure rate exceeds the threshold, the circuit trips OPEN
- * and immediately rejects new requests without spawning processes.
- */
+
 
 const WINDOW_SIZE = 10;         // track last N execution results
 const FAILURE_THRESHOLD = 0.5;  // trip if >50% of window failed

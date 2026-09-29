@@ -81,10 +81,10 @@ export default function useSocket({
     return () => socket.disconnect()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const runCode = useCallback((language, code, roomId) => {
+  const runCode = useCallback((language, code, roomId, stdin = '') => {
     const sessionId = `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
     sessionIdRef.current = sessionId
-    socketRef.current?.emit('run_code', { language, code, roomId, sessionId })
+    socketRef.current?.emit('run_code', { language, code, stdin, roomId, sessionId })
   }, [])
 
   const joinRoom = useCallback((roomId, userId, displayName) => {

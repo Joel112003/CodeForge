@@ -3,7 +3,7 @@ import { normalizeLanguage, SUPPORTED_LANGUAGES } from "../services/executionEng
 const MAX_CODE_LENGTH = 10000;
 
 export default function validateExecution(req, res, next) {
-  const { language, code } = req.body;
+  const { language, code, stdin = "" } = req.body;
   const normalizedLanguage = normalizeLanguage(language);
 
   if (!normalizedLanguage || !SUPPORTED_LANGUAGES.includes(normalizedLanguage)) {
@@ -20,6 +20,10 @@ export default function validateExecution(req, res, next) {
       .json({
         error: "Code must be a string with max length of " + MAX_CODE_LENGTH,
       });
+  }
+
+  if (typeof stdin !== "string") {
+    return res.status(400).json({ error: "stdin must be a string" });
   }
 
   req.body.language = normalizedLanguage;

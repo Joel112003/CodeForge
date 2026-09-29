@@ -67,7 +67,7 @@ export default function setupSocket(io) {
       if (callback) callback("JOINED");
     });
 
-    socket.on("run_code", async ({ language, code, roomId, sessionId }, callback) => {
+    socket.on("run_code", async ({ language, code, stdin = "", roomId, sessionId }, callback) => {
       const normalizedLanguage = normalizeLanguage(language);
 
       if (!SUPPORTED_LANGUAGES.includes(normalizedLanguage)) {
@@ -82,6 +82,12 @@ export default function setupSocket(io) {
         return;
       }
 
+      if (typeof stdin !== "string") {
+        socket.emit("error", "stdin must be a string");
+        if (callback) callback("INVALID_STDIN");
+        return;
+      }
+
       if (callback) callback("QUEUED");
       // Echo sessionId back so the client can filter its own run
       socket.emit("status", { status: "QUEUED", sessionId });
@@ -93,6 +99,7 @@ export default function setupSocket(io) {
       await enqueueExecution({
         language: normalizedLanguage,
         code,
+        stdin,
         socketId: socket.id,
         roomId: resolvedRoomId,
         userId: socket.data.userId,

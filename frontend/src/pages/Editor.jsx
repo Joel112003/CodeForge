@@ -33,6 +33,7 @@ export default function Editor() {
   const { user }                      = useAuthStore()
   const [language,    setLanguage]    = useState('javascript')
   const [code,        setCode]        = useState(DEFAULT_CODE.javascript)
+  const [stdin,       setStdin]       = useState('')
   const [outputLines, setOutputLines] = useState([])
   const [status,      setStatus]      = useState('IDLE')
   const [members,     setMembers]     = useState([])
@@ -78,7 +79,7 @@ export default function Editor() {
 
   function handleRun() {
     setOutputLines([])
-    runCode(language, code, roomId)
+    runCode(language, code, roomId, stdin)
   }
 
   return (
@@ -148,6 +149,14 @@ export default function Editor() {
 
           {/* Terminal — 200px on mobile, fills on desktop */}
           <div className="editor-terminal" style={{ height: 200, overflow: 'hidden', border: `1px solid ${T.rule}` }}>
+            <textarea
+              aria-label="Standard input"
+              value={stdin}
+              onChange={(event) => setStdin(event.target.value)}
+              placeholder="Standard input"
+              spellCheck="false"
+              style={{ width: '100%', height: 48, resize: 'none', padding: '8px 10px', border: `1px solid ${T.rule}`, background: T.deep, fontFamily: "'DM Mono', monospace", fontSize: 11 }}
+            />
             <Terminal lines={outputLines} status={status} />
           </div>
 

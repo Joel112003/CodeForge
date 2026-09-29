@@ -1,181 +1,122 @@
-import { randomUUID } from "crypto";
-import Docker from "dockerode";
-import { Writable } from "stream";
-import executionConfig from "../config/execution.js";
+import { execFile, spawn } from "child_process";
+import { mkdtemp, rm, writeFile } from "fs/promises";
+import { join } from "path";
+import { tmpdir } from "os";
+import { promisify } from "util";
+import executionConfig, { LANGUAGE_CONFIG } from "../config/execution.js";
 
-const RUNNERS = {
-  javascript: { cmd: "node", flag: "-e", image: executionConfig.images.javascript },
-  python: { cmd: "python", flag: "-c", image: executionConfig.images.python },
-};
-
-export const Images = {
-  ...executionConfig.images,
-};
-
-export const SUPPORTED_LANGUAGES = Object.keys(RUNNERS);
-
-const LANGUAGE_ALIASES = {
-  js: "javascript",
-  node: "javascript",
-  py: "python",
-};
+const execFileAsync = promisify(execFile);
+export const SUPPORTED_LANGUAGES = Object.keys(LANGUAGE_CONFIG);
+const LANGUAGE_ALIASES = { js: "javascript", node: "javascript", py: "python" };
 
 export function normalizeLanguage(input) {
   if (!input || typeof input !== "string") return input;
-  const lower = input.toLowerCase();
-  return LANGUAGE_ALIASES[lower] ?? lower;
+  return LANGUAGE_ALIASES[input.toLowerCase()] ?? input.toLowerCase();
 }
 
-const docker = new Docker();
-
-const wait = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
-
-async function stopContainer(container) {
-  try {
-    await container.kill({ signal: "SIGKILL" });
-  } catch (error) {
-    if (!/not running|no such container/i.test(error.message)) throw error;
+function killProcessTree(child) {
+  if (!child.pid) return Promise.resolve();
+  if (process.platform === "win32") {
+    return execFileAsync("taskkill", ["/pid", String(child.pid), "/T", "/F"]).catch(() => {});
   }
+  try { process.kill(-child.pid, "SIGKILL"); } catch {}
+  return Promise.resolve();
 }
 
-function makeOutputWriter(onChunk, state, type, terminate) {
-  return new Writable({
-    write(chunk, encoding, callback) {
-      const text = Buffer.isBuffer(chunk) ? chunk.toString() : Buffer.from(chunk, encoding).toString();
-      const bytes = Buffer.byteLength(text);
-      const remaining = executionConfig.maxOutputBytes - state.outputBytes;
-
-      if (remaining <= 0) {
-        state.outputLimitExceeded = true;
-        terminate();
-        callback();
-        return;
-      }
-
-      const visible = bytes > remaining ? Buffer.from(text).subarray(0, remaining).toString() : text;
-      state.outputBytes += Buffer.byteLength(visible);
-      state.output += visible;
-      onChunk(visible, type);
-
-      if (bytes > remaining) {
-        state.outputLimitExceeded = true;
-        onChunk("\n[Execution stopped: output limit exceeded]", "stderr");
-        terminate();
-      }
-
-      callback();
-    },
-  });
+function classify(stderr, exitCode) {
+  if (exitCode === 0) return "COMPLETED";
+  if (/SyntaxError|IndentationError|TabError|invalid syntax/i.test(stderr)) return "COMPILE_ERROR";
+  return "RUNTIME_ERROR";
 }
 
-async function readContainerStats(container) {
-  try {
-    const stats = await container.stats({ stream: false });
-    return {
-      memoryBytes: stats.memory_stats?.max_usage || stats.memory_stats?.usage || 0,
-      cpuTotalNanoseconds: stats.cpu_stats?.cpu_usage?.total_usage || 0,
-    };
-  } catch {
-    return { memoryBytes: 0, cpuTotalNanoseconds: 0 };
+async function executeCode(language, code, stdin = "", onChunk = () => {}) {
+  const config = LANGUAGE_CONFIG[language];
+  if (!config) throw Object.assign(new Error("Invalid language"), { code: "INVALID_LANGUAGE" });
+  if (Buffer.byteLength(stdin, "utf8") > executionConfig.maxStdinBytes) {
+    throw Object.assign(new Error("Input size limit exceeded"), { code: "INPUT_LIMIT_EXCEEDED" });
   }
-}
 
-async function executeCode(language, code, onChunk = () => {}) {
-  const runner = RUNNERS[language];
-  if (!runner) throw new Error(`Unsupported language: ${language}`);
+  const workspace = await mkdtemp(join(tmpdir(), "codeforge-"));
+  const sourcePath = join(workspace, config.sourceFile);
+  await writeFile(sourcePath, code, "utf8");
 
+  const state = { stdout: "", stderr: "", outputBytes: 0, outputLimitExceeded: false, timedOut: false };
   const startedAt = Date.now();
-  const state = {
-    output: "",
-    outputBytes: 0,
-    outputLimitExceeded: false,
-    timedOut: false,
-    stopPromise: null,
-  };
-  const container = await docker.createContainer({
-    name: `codeforge-execution-${randomUUID()}`,
-    Image: runner.image,
-    Cmd: [runner.cmd, runner.flag, code],
-    User: "10001:10001",
-    WorkingDir: "/sandbox",
-    Env: [],
-    Labels: { "com.codeforge.execution": "true" },
-    HostConfig: {
-      NetworkMode: "none",
-      ReadonlyRootfs: true,
-      Memory: executionConfig.memoryBytes,
-      MemorySwap: executionConfig.memoryBytes,
-      NanoCpus: executionConfig.cpuNanoCpus,
-      PidsLimit: executionConfig.maxProcesses,
-      CapDrop: ["ALL"],
-      SecurityOpt: ["no-new-privileges:true"],
-      Tmpfs: {
-        "/tmp": `rw,noexec,nosuid,size=${executionConfig.tmpfsMb}m`,
-      },
-    },
+  const child = spawn(config.executable, config.args(sourcePath), {
+    cwd: workspace,
+    env: { PATH: process.env.PATH },
+    shell: false,
+    detached: process.platform !== "win32",
+    windowsHide: true,
+    stdio: ["pipe", "pipe", "pipe"],
   });
-
+  let terminatePromise = null;
   const terminate = () => {
-    if (!state.stopPromise) state.stopPromise = stopContainer(container).catch(() => {});
+    if (!terminatePromise) terminatePromise = killProcessTree(child);
+    return terminatePromise;
+  };
+  const append = (chunk, type) => {
+    const text = chunk.toString();
+    const remaining = executionConfig.maxOutputBytes - state.outputBytes;
+    const visible = Buffer.from(text).subarray(0, Math.max(0, remaining)).toString();
+    state[type] += visible;
+    state.outputBytes += Buffer.byteLength(visible);
+    onChunk(visible, type);
+    if (Buffer.byteLength(text) > remaining) {
+      state.outputLimitExceeded = true;
+      onChunk("\n[Execution stopped: output limit exceeded]", "stderr");
+      terminate();
+    }
   };
 
   try {
-    const stream = await container.attach({ stream: true, stdout: true, stderr: true });
-    const stdout = makeOutputWriter(onChunk, state, "stdout", terminate);
-    const stderr = makeOutputWriter(onChunk, state, "stderr", terminate);
-    docker.modem.demuxStream(stream, stdout, stderr);
+    const result = await new Promise((resolve, reject) => {
+      const timer = setTimeout(() => {
+        state.timedOut = true;
+        onChunk(`\n[Execution timed out after ${executionConfig.timeoutMs / 1000} seconds]`, "stderr");
+        terminate();
+      }, executionConfig.timeoutMs);
+      child.stdout.on("data", (chunk) => append(chunk, "stdout"));
+      child.stderr.on("data", (chunk) => append(chunk, "stderr"));
+      child.once("error", (error) => {
+        clearTimeout(timer);
+        reject(Object.assign(new Error("Execution infrastructure failure"), { code: "EXECUTION_ERROR", cause: error }));
+      });
+      child.once("close", (exitCode, signal) => {
+        clearTimeout(timer);
+        resolve({ exitCode, signal });
+      });
+      if (stdin) child.stdin.write(stdin, "utf8");
+      child.stdin.end();
+    });
 
-    await container.start();
-    const waitPromise = container.wait();
-    const outcome = await Promise.race([
-      waitPromise,
-      wait(executionConfig.timeoutMs).then(() => ({ StatusCode: null, timedOut: true })),
-    ]);
-
-    if (outcome.timedOut) {
-      state.timedOut = true;
-      onChunk(`\n[Execution timed out after ${executionConfig.timeoutMs / 1000} seconds]`, "stderr");
-      terminate();
-      await Promise.race([waitPromise, wait(1000)]);
-    } else if (state.outputLimitExceeded) {
-      await Promise.race([waitPromise, wait(1000)]);
-    }
-
-    const resourceUsage = await readContainerStats(container);
-    const duration = Date.now() - startedAt;
-    const statusCode = outcome.StatusCode;
-
-    let status = "COMPLETED";
-    let error = null;
+    if (terminatePromise) await terminatePromise;
+    let status = classify(state.stderr, result.exitCode);
+    let error = status === "COMPLETED" ? null : state.stderr.trim() || `Execution failed with exit code ${result.exitCode}`;
     if (state.timedOut) {
       status = "TIMEOUT";
       error = "Execution timed out";
     } else if (state.outputLimitExceeded) {
-      status = "RESOURCE_LIMIT";
+      status = "OUTPUT_LIMIT";
       error = "Execution output limit exceeded";
-    } else if (statusCode === 137) {
-      status = "RESOURCE_LIMIT";
-      error = "Execution stopped by a container resource limit";
-    } else if (statusCode !== 0) {
-      status = "ERROR";
-      error = `Execution failed with exit code ${statusCode}`;
     }
 
+    const duration = Date.now() - startedAt;
     return {
       status,
-      output: state.output,
+      stdout: state.stdout,
+      stderr: state.stderr,
+      output: `${state.stdout}${state.stderr}`,
       error,
+      exitCode: result.exitCode,
+      signal: result.signal,
       duration,
       executionTimeMs: duration,
-      resourceUsage,
+      resourceUsage: { memoryBytes: 0, cpuTotalNanoseconds: 0 },
     };
   } finally {
-    if (state.stopPromise) await state.stopPromise;
-    try {
-      await container.remove({ force: true });
-    } catch (error) {
-      if (!/no such container/i.test(error.message)) throw error;
-    }
+    if (terminatePromise) await terminatePromise;
+    await rm(workspace, { recursive: true, force: true });
   }
 }
 

@@ -30,8 +30,8 @@ const NON_DETERMINISTIC_PATTERNS = [
  * Generate a deterministic cache key from language + code.
  * Uses SHA-256 for content-addressable storage.
  */
-export function cacheKey(language, code) {
-  const normalized = `${language}:${code.trim()}`;
+export function cacheKey(language, code, stdin = "") {
+  const normalized = `${language}:${code.trim()}:${stdin}`;
   return crypto.createHash("sha256").update(normalized).digest("hex");
 }
 
@@ -50,10 +50,10 @@ export function isNonDeterministic(code) {
  * On hit, updates the access timestamp in the LRU sorted set
  * so recently accessed items survive eviction.
  */
-export async function cacheGet(language, code) {
+export async function cacheGet(language, code, stdin = "") {
   if (isNonDeterministic(code)) return { hit: false };
 
-  const key = cacheKey(language, code);
+  const key = cacheKey(language, code, stdin);
   const resultKey = `${CACHE_PREFIX}${key}`;
 
   const result = await redis.hgetall(resultKey);
@@ -77,10 +77,10 @@ export async function cacheGet(language, code) {
  * LRU eviction uses a Redis sorted set where the score is the last access
  * timestamp. The lowest scores (oldest access) are evicted first.
  */
-export async function cacheSet(language, code, output, durationMs) {
+export async function cacheSet(language, code, stdin, output, durationMs) {
   if (isNonDeterministic(code)) return;
 
-  const key = cacheKey(language, code);
+  const key = cacheKey(language, code, stdin);
   const resultKey = `${CACHE_PREFIX}${key}`;
 
   // Store the result as a Redis hash

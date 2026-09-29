@@ -28,7 +28,7 @@
 
 CodeForge is a SaaS-grade collaborative coding environment. Users can:
 
-- **Run code** in a sandboxed process (JavaScript, Python) with real-time terminal output streamed back via WebSockets.
+- **Run code** in a separate host child process (JavaScript, Python) with real-time terminal output streamed back via WebSockets.
 - **Create rooms** and invite others to collaborate with live code sync — every keystroke is broadcast to all session members instantly.
 - **Join sessions** from a shared link or room code, see who's online, and watch output as it streams.
 - **Use the Playground** as a guest — run code without signing up, executions are not saved.
@@ -58,8 +58,8 @@ CodeForge is a SaaS-grade collaborative coding environment. Users can:
 │   PostgreSQL    BullMQ Queue  ←── Redis (job store)          │
 │   (users,            │                                       │
 │    executions)        ▼                                       │
-│             child_process.spawn()                            │
-│           (node / python3 subprocess)                        │
+│             child_process execution worker                  │
+│             (node / python runtime)                         │
 │                      │                                       │
 │              Stdout/Stderr stream                            │
 │                      │                                       │
@@ -76,7 +76,7 @@ CodeForge is a SaaS-grade collaborative coding environment. Users can:
 1. Client emits  run_code  { language, code, roomId, sessionId }
 2. Socket handler validates language → emits status: { status: QUEUED, sessionId }
 3. Job added to BullMQ queue (language, code, socketId, roomId, userId, sessionId)
-4. Worker picks up job → spawns child_process (node/python3) with 10s timeout
+4. Worker picks up job → starts a host child process with a 10s timeout
 5. Stdout/stderr chunks stream back via  socket.emit("output", { ...chunk, sessionId })
 6. Client filters events by sessionId — prevents cross-contamination between tabs/sessions
 7. On completion → status: COMPLETED + DB record updated
@@ -89,7 +89,7 @@ CodeForge is a SaaS-grade collaborative coding environment. Users can:
 
 | Feature | Detail |
 |---|---|
-| **Sandboxed Execution** | Each run spawns a fresh child process. 10s timeout, streamed stdout/stderr |
+| **Execution Isolation** | Each run uses a fresh host child process with a 10s timeout and output limit; this is not a security sandbox |
 | **Session-scoped Output** | Every run tagged with a `sessionId` — output events are strictly scoped, no cross-contamination between Playground and Editor |
 | **Real-time Collab** | Socket.IO rooms — code changes broadcast to every member via `code_updated` event |
 | **Job Queue** | BullMQ + Redis — runs are queued, not blocking. Concurrency = 5 workers |
@@ -217,7 +217,8 @@ CodeExecutionEngine/
         │   └── room.routes.js
         └── services/
             ├── email.js                    # SendGrid HTTP API (port 443, no SMTP)
-            ├── executionEngine.js          # child_process executor (node / python3)
+            ├── executionEngine.js          # child_process executor
+            ├── execution.js                # timeout and output limits
             ├── queue.js                    # BullMQ worker — tags all events with sessionId
             ├── roomManager.js              # Redis room + member management
             └── socketHandlers.js           # All Socket.IO event handlers
@@ -236,7 +237,7 @@ CodeExecutionEngine/
 | Start Command | `npm start` |
 | Runtime | Node |
 
-**Required environment variables on Render:**
+**Required environment variables on the backend host:**
 
 ```env
 NODE_ENV=production
@@ -247,7 +248,14 @@ JWT_SECRET=<64-byte random hex>
 CLIENT_URL=https://your-app.vercel.app
 SENDGRID_API_KEY=SG.xxxxxxxxxxxxxxxxxxxx
 SENDGRID_FROM=your-verified-sender@example.com
+EXECUTION_TIMEOUT_MS=10000
+EXECUTION_MAX_OUTPUT_BYTES=65536
+EXECUTION_MAX_STDIN_BYTES=65536
+EXECUTION_MAX_STDIN_BYTES=65536
 ```
+
+The backend uses the host's Node.js runtime and Python runtime. Python must be
+available as `python3` on Linux/macOS or through the `py` launcher on Windows.
 
 ### Frontend → Vercel
 
@@ -284,11 +292,11 @@ Uses `CREATE TABLE IF NOT EXISTS` — safe to run on every deploy.
 |---|---|---|
 | Node.js | 20.x | |
 | npm | 10.x | |
-| Python 3 | 3.10+ | Required for Python execution locally |
+| Python 3 | 3.10+ | Required for Python execution |
 | PostgreSQL | 15.x | Or use Neon.tech |
 | Redis | 7.x | Or use Upstash |
 
-> **No Docker required** — the execution engine uses `child_process.spawn()` in both local and production environments.
+Node.js and Python must be installed on the backend host.
 
 ### Environment Variables
 
@@ -303,6 +311,8 @@ REDIS_URL=redis://localhost:6379
 JWT_SECRET=your-super-secret-jwt-key-minimum-64-chars
 SENDGRID_API_KEY=SG.xxxxxxxxxxxxxxxxxxxx
 SENDGRID_FROM=your-verified-sender@example.com
+EXECUTION_TIMEOUT_MS=10000
+EXECUTION_MAX_OUTPUT_BYTES=65536
 ```
 
 Create `frontend/.env`:
@@ -351,7 +361,7 @@ All routes prefixed with `/api`. Non-GET routes require `X-CSRF-Token` header (v
 
 | Method | Endpoint | Auth | Body | Response |
 |---|---|---|---|---|
-| `POST` | `/api/execute` | Cookie | `{ language, code }` | `{ executionId }` |
+| `POST` | `/api/execute` | Cookie | `{ language, code, stdin? }` | Execution result with status, stdout, stderr, and exit code |
 | `GET` | `/api/history` | Cookie | — | `Execution[]` |
 | `GET` | `/api/history/:id` | Cookie | — | `Execution` |
 
@@ -372,7 +382,7 @@ Connect to the Socket.IO server at `VITE_API_URL` with `withCredentials: true`.
 
 | Event | Payload | Description |
 |---|---|---|
-| `run_code` | `{ language, code, roomId?, sessionId }` | Queue code for execution |
+| `run_code` | `{ language, code, stdin?, roomId?, sessionId }` | Queue code for execution |
 | `join_room` | `{ roomId, userId, displayName }` | Join a collaborative room |
 | `code_change` | `{ roomId, code, language }` | Broadcast code update to room |
 
@@ -389,6 +399,30 @@ Connect to the Socket.IO server at `VITE_API_URL` with `withCredentials: true`.
 | `error` | `string` | Error message from server |
 
 > All `output` and `status` events carry a `sessionId`. The client drops any event whose `sessionId` doesn't match the current active run.
+
+Execution statuses are `QUEUED`, `RUNNING`, `COMPLETED`, `COMPILE_ERROR`,
+`RUNTIME_ERROR`, `TIMEOUT`, `OUTPUT_LIMIT`, `INVALID_LANGUAGE`, and
+`EXECUTION_ERROR`. Only exit code 0 produces `COMPLETED`.
+
+## Execution Tests and Load Testing
+
+Run the language and validation checks:
+
+```bash
+cd backend
+npm run test:execution
+```
+
+The load test submits real Socket.IO `run_code` requests at 2, 5, 10, 25, 50,
+and 100 concurrent clients:
+
+```bash
+npm run load-test
+```
+
+Results are written to `backend/load-test/results/latest.json` and
+`backend/load-test/results/latest.csv`. CPU and memory columns remain empty
+unless an external measurement source is added.
 
 ---
 
@@ -437,6 +471,16 @@ CREATE TABLE password_reset_tokens (
 
 ## Security
 
+CodeForge uses host-level child processes, not Docker, VMs, or containers. Each
+run gets a unique temporary workspace and a sanitized environment containing
+only `PATH`; source files are removed in cleanup. Timeout, output, and input
+limits are enforced, and Windows process trees are terminated with `taskkill`.
+
+This prevents accidental cross-execution workspace sharing and limits runaway
+output or execution time. It does not provide complete network, CPU, memory,
+filesystem, or process-count isolation from the host. Production hostile
+multi-tenant execution requires an OS sandbox, VM, or container boundary.
+
 | Mechanism | Implementation |
 |---|---|
 | **Passwords** | bcrypt, 10 salt rounds |
@@ -445,7 +489,7 @@ CREATE TABLE password_reset_tokens (
 | **Password Reset** | Single-use token hashed with SHA-256, 10-minute expiry. Resets all refresh tokens on use |
 | **CSRF** | Double-submit pattern — token in `/me` response, required as `X-CSRF-Token` header |
 | **Rate Limiting** | Global: 100 req/15min. Execution: 20 runs/hour per IP |
-| **Code Sandbox** | Subprocess timeout 10s. Process killed with SIGKILL on timeout |
+| **Code Execution** | Host child process, 10-second timeout, input/output limits, sanitized environment, and process-tree cleanup where supported |
 | **Input Validation** | Max 10,000 chars. Language must be in `SUPPORTED_LANGUAGES` whitelist |
 | **Helmet** | CSP, HSTS (prod only), frameAncestors none |
 | **userId Trust** | `socket.data.userId` set only at `join_room` — never overrideable by client events |
@@ -487,13 +531,16 @@ CodeForge uses a custom warm parchment design language.
 | `RUNNING` | Accent orange |
 | `COMPLETED` | Green |
 | `ERROR` | Red |
+| `TIMEOUT` | Red |
+| `RESOURCE_LIMIT` | Red |
 
 ---
 
 ## Known Limitations
 
 - **Languages supported:** JavaScript and Python only. Adding a language requires updating `RUNNERS` in `executionEngine.js`.
-- **No process isolation:** The `child_process` approach runs code directly on the server (no Docker). Suitable for portfolio/demo use.
+- **Security limitation:** Host child-process execution does not isolate network, memory, CPU, filesystem, or process creation. Use only with trusted users.
+- **Load-test measurements:** The harness records request, queue, execution, success, failure, and timeout results. CPU and memory values require an external host metrics source.
 - **Room persistence:** Rooms are stored in Redis and expire after 24 hours.
 - **Guest execution history:** Guest runs via `/playground` are not saved to the database.
 - **Horizontal scaling:** The `setIo` pattern in `queue.js` uses in-process Socket.IO access — won't work across multiple Node processes without `@socket.io/redis-adapter`.

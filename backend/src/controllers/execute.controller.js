@@ -6,7 +6,7 @@ import pool from "../config/db.js";
 import { recordMetric, MetricNames } from "../services/metricsCollector.js";
 
 export const execute = async (req, res) => {
-  const { language, code } = req.body;
+  const { language, code, stdin = "" } = req.body;
   const normalizedLanguage = normalizeLanguage(language);
 
   if (!SUPPORTED_LANGUAGES.includes(normalizedLanguage)) {
@@ -18,10 +18,12 @@ export const execute = async (req, res) => {
   }
 
   try {
-    const result = await executeCode(normalizedLanguage, code);
+    const requestStartedAt = Date.now();
+    const result = await executeCode(normalizedLanguage, code, stdin);
     await recordMetric(result.status === "COMPLETED" ? MetricNames.EXECUTIONS : MetricNames.ERRORS);
     await recordMetric(MetricNames.EXECUTION_TIME, result.executionTimeMs);
-    await recordMetric(MetricNames.TOTAL_REQUEST_TIME, result.executionTimeMs);
+    await recordMetric(MetricNames.PEAK_MEMORY, result.resourceUsage.memoryBytes);
+    await recordMetric(MetricNames.CPU_TIME, result.resourceUsage.cpuTotalNanoseconds);
     if (result.status === "TIMEOUT") await recordMetric(MetricNames.TIMEOUTS);
     if (result.status === "RESOURCE_LIMIT") await recordMetric(MetricNames.RESOURCE_LIMITS);
     // Store execution history in DB
@@ -38,6 +40,7 @@ export const execute = async (req, res) => {
         result.duration,
       ],
     );
+    await recordMetric(MetricNames.TOTAL_REQUEST_TIME, Date.now() - requestStartedAt);
     const message = result.status === "COMPLETED" ? "Execution successful" : "Execution finished";
     res.status(result.status === "COMPLETED" ? 200 : 422).json({ message, result });
   } catch (err) {

@@ -21,6 +21,7 @@ const T = {
 export default function Playground() {
   const [language,    setLanguage]    = useState('javascript')
   const [code,        setCode]        = useState(DEFAULT_CODE.javascript)
+  const [stdin,       setStdin]       = useState('')
   const [outputLines, setOutputLines] = useState([])
   const [status,      setStatus]      = useState('IDLE')
   const navigate = useNavigate()
@@ -40,7 +41,7 @@ export default function Playground() {
 
   function handleRun() {
     if (status === 'RUNNING' || status === 'QUEUED') return
-    runCode(language, code, null)
+    runCode(language, code, null, stdin)
   }
 
   return (
@@ -153,6 +154,14 @@ export default function Playground() {
             }
           `}</style>
           <div style={{ height: '100%' }}>
+            <textarea
+              aria-label="Standard input"
+              value={stdin}
+              onChange={(event) => setStdin(event.target.value)}
+              placeholder="Standard input"
+              spellCheck="false"
+              style={{ width: '100%', height: 48, resize: 'none', padding: '8px 10px', border: `1px solid ${T.rule}`, background: T.panelDeep, fontFamily: "'DM Mono', monospace", fontSize: 11 }}
+            />
             <Terminal lines={outputLines} status={status} />
           </div>
         </div>
