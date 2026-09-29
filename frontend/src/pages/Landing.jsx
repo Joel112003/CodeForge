@@ -26,8 +26,8 @@ const rise = {
 const FEATURES = [
   {
     index: "01",
-    title: "Isolated Execution",
-    desc: "Every run executes in a sandboxed process with a strict timeout. No interference, no data leaks. Hermetic by design.",
+    title: "Bounded Execution",
+    desc: "Every run uses a fresh host process with a strict timeout and output limit, so runaway programs are stopped quickly.",
   },
   {
     index: "02",
@@ -90,10 +90,10 @@ function GlowingStar({ size = 16, delay = 0 }) {
 }
 
 const MARQUEE_ITEMS = [
-  "Sandboxed Process Execution",
+  "Bounded Host Process Execution",
   "Real-time Collaboration",
   "Live Output Streaming",
-  "Secure Sandboxed Execution",
+  "Execution Limits",
   "Multi-Language Support",
   "BullMQ Job Queue",
   "WebSocket Sync",
@@ -190,8 +190,8 @@ export default function Landing() {
               variants={rise}
               className="max-w-95 font-['Spectral'] text-[1.05rem] italic leading-[1.85] text-[#7A6E5A]"
             >
-              Execute code in a secure sandboxed process. Collaborate in real time. Watch
-              output stream live — right in your browser.
+              Execute JavaScript or Python in a bounded host process. Collaborate in real time.
+              Watch output stream live — right in your browser.
             </motion.p>
 
             <motion.div variants={rise} className="flex items-center gap-4">

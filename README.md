@@ -4,6 +4,8 @@
 
 🔗 **Live Demo:** [code-forge-two.vercel.app](https://code-forge-two.vercel.app)
 
+**GitHub About:** Real-time collaborative code editor and runner for JavaScript and Python (Monaco, Socket.IO, BullMQ, Redis)
+
 ---
 
 ## Table of Contents
