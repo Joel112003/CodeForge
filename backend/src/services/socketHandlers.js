@@ -1,5 +1,5 @@
 import { normalizeLanguage, SUPPORTED_LANGUAGES } from "./executionEngine.js";
-import executionQueue from "./queue.js";
+import { enqueueExecution } from "./queue.js";
 import pool from "../config/db.js";
 import {
   addMember,
@@ -76,6 +76,12 @@ export default function setupSocket(io) {
         return;
       }
 
+      if (typeof code !== "string" || code.length === 0 || code.length > 10000) {
+        socket.emit("error", "Code must be a non-empty string with a maximum length of 10000 characters");
+        if (callback) callback("INVALID_CODE");
+        return;
+      }
+
       if (callback) callback("QUEUED");
       // Echo sessionId back so the client can filter its own run
       socket.emit("status", { status: "QUEUED", sessionId });
@@ -84,13 +90,13 @@ export default function setupSocket(io) {
       const resolvedRoomId = roomId || (socket.data.userId ? socket.data.roomId : null);
 
       // Always use socket.data.userId (set at join_room) — never trust client-supplied userId
-      await executionQueue.add("run", {
+      await enqueueExecution({
         language: normalizedLanguage,
         code,
         socketId: socket.id,
         roomId: resolvedRoomId,
-        userId: socket.data.userId,   // UUID from auth, safe for DB
-        sessionId,                    // passed through so worker can tag all events
+        userId: socket.data.userId,
+        sessionId,
       });
     });
 

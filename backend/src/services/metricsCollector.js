@@ -31,7 +31,14 @@ export const MetricNames = {
   QUEUE_ADDED: "queue_added",
   QUEUE_COMPLETED: "queue_completed",
   QUEUE_FAILED: "queue_failed",
-  LATENCY: "latency",           // stores duration values, not counts
+  LATENCY: "latency",
+  QUEUE_TIME: "queue_time",
+  EXECUTION_TIME: "execution_time",
+  TOTAL_REQUEST_TIME: "total_request_time",
+  TIMEOUTS: "timeouts",
+  RESOURCE_LIMITS: "resource_limits",
+  PEAK_MEMORY: "peak_memory",
+  CPU_TIME: "cpu_time",
 };
 
 /**
@@ -108,6 +115,13 @@ export async function getMetricsSnapshot() {
     queueFailed1m,
     avgLatency1m,
     avgLatency5m,
+    avgQueueTime1m,
+    avgExecutionTime1m,
+    avgTotalRequestTime1m,
+    timeoutCount1m,
+    resourceLimitCount1m,
+    avgPeakMemory1m,
+    avgCpuTime1m,
   ] = await Promise.all([
     countMetric(MetricNames.EXECUTIONS, 60_000),
     countMetric(MetricNames.EXECUTIONS, 300_000),
@@ -121,6 +135,13 @@ export async function getMetricsSnapshot() {
     countMetric(MetricNames.QUEUE_FAILED, 60_000),
     avgMetric(MetricNames.LATENCY, 60_000),
     avgMetric(MetricNames.LATENCY, 300_000),
+    avgMetric(MetricNames.QUEUE_TIME, 60_000),
+    avgMetric(MetricNames.EXECUTION_TIME, 60_000),
+    avgMetric(MetricNames.TOTAL_REQUEST_TIME, 60_000),
+    countMetric(MetricNames.TIMEOUTS, 60_000),
+    countMetric(MetricNames.RESOURCE_LIMITS, 60_000),
+    avgMetric(MetricNames.PEAK_MEMORY, 60_000),
+    avgMetric(MetricNames.CPU_TIME, 60_000),
   ]);
 
   const cacheTotal1m = cacheHits1m + cacheMisses1m;
@@ -146,6 +167,19 @@ export async function getMetricsSnapshot() {
     latency: {
       avgMs1m: avgLatency1m,
       avgMs5m: avgLatency5m,
+    },
+    timing: {
+      avgQueueMs1m: avgQueueTime1m,
+      avgExecutionMs1m: avgExecutionTime1m,
+      avgTotalRequestMs1m: avgTotalRequestTime1m,
+    },
+    limits: {
+      timeoutsPerMinute: timeoutCount1m,
+      resourceLimitsPerMinute: resourceLimitCount1m,
+    },
+    resources: {
+      avgPeakMemoryBytes1m: avgPeakMemory1m,
+      avgCpuTimeNanoseconds1m: avgCpuTime1m,
     },
   };
 }

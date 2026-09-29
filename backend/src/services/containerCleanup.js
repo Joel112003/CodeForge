@@ -1,4 +1,23 @@
-// No-op in production: code execution uses child_process, not local Docker.
+import Docker from "dockerode";
+
+const docker = new Docker();
+
 export async function cleanupOrphanContainers() {
-  console.log("[cleanup] child_process mode — no containers to clean up.");
+  const containers = await docker.listContainers({
+    all: true,
+    filters: { label: ["com.codeforge.execution=true"] },
+  });
+
+  await Promise.all(
+    containers.map(async ({ Id }) => {
+      try {
+        const container = docker.getContainer(Id);
+        await container.remove({ force: true });
+      } catch (error) {
+        if (!/no such container/i.test(error.message)) throw error;
+      }
+    }),
+  );
+
+  console.log(`[cleanup] removed ${containers.length} orphan execution container(s).`);
 }

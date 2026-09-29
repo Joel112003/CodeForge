@@ -33,7 +33,7 @@ export async function enqueueExecution({ language, code, socketId, roomId, userI
 
   await executionQueue.add(
     "run",
-    { language, code, socketId, roomId, userId, sessionId },
+    { language, code, socketId, roomId, userId, sessionId, requestedAt: Date.now() },
     { priority },
   );
 
@@ -45,6 +45,8 @@ const worker = new Worker(
   async (job) => {
     const { language, code, socketId, roomId, userId, sessionId } = job.data;
     const normalizedLanguage = normalizeLanguage(language);
+    const executionStartedAt = Date.now();
+    await recordMetric(MetricNames.QUEUE_TIME, Math.max(0, executionStartedAt - (job.data.requestedAt || job.timestamp)));
 
     const socket = _io?.sockets?.sockets?.get(socketId) ?? null;
 
@@ -111,7 +113,7 @@ const worker = new Worker(
     try {
       socket?.emit("status", { status: "RUNNING", sessionId });
 
-      await executeCode(normalizedLanguage, code, (chunk, type) => {
+      const result = await executeCode(normalizedLanguage, code, (chunk, type) => {
         outputChunks.push(chunk);
 
         const payload = { output: chunk, data: chunk, type, sessionId };
@@ -124,27 +126,37 @@ const worker = new Worker(
         }
       });
 
-      const duration = Date.now() - startTime;
+      const duration = result.executionTimeMs || Date.now() - startTime;
       const fullOutput = outputChunks.join("");
 
       // Persist result
       if (executionId) {
         await pool.query(
-          `UPDATE executions SET status = 'COMPLETED', output = $1, duration_ms = $2 WHERE id = $3`,
-          [fullOutput, duration, executionId],
+          `UPDATE executions SET status = $1, output = $2, error = $3, duration_ms = $4 WHERE id = $5`,
+          [result.status, fullOutput, result.error, duration, executionId],
         );
       }
 
-      // ── Cache the result ────────────────────────────────────────────
-      await cacheSet(normalizedLanguage, code, fullOutput, duration);
+      if (result.status === "COMPLETED") {
+        await cacheSet(normalizedLanguage, code, fullOutput, duration);
+        await recordMetric(MetricNames.EXECUTIONS);
+        await recordMetric(MetricNames.QUEUE_COMPLETED);
+        circuitBreaker.recordSuccess();
+      } else {
+        await recordMetric(result.status === "TIMEOUT" ? MetricNames.TIMEOUTS : MetricNames.RESOURCE_LIMITS);
+        await recordMetric(MetricNames.ERRORS);
+        circuitBreaker.recordFailure();
+      }
 
-      // ── Record metrics ──────────────────────────────────────────────
-      await recordMetric(MetricNames.EXECUTIONS);
       await recordMetric(MetricNames.LATENCY, duration);
-      await recordMetric(MetricNames.QUEUE_COMPLETED);
-
-      circuitBreaker.recordSuccess();
-      socket?.emit("status", { status: "COMPLETED", sessionId });
+      await recordMetric(MetricNames.EXECUTION_TIME, duration);
+      await recordMetric(MetricNames.PEAK_MEMORY, result.resourceUsage.memoryBytes);
+      await recordMetric(MetricNames.CPU_TIME, result.resourceUsage.cpuTotalNanoseconds);
+      await recordMetric(MetricNames.TOTAL_REQUEST_TIME, Date.now() - (job.data.requestedAt || job.timestamp));
+      socket?.emit("status", { status: result.status, sessionId });
+      if (result.error) {
+        socket?.emit("output", { output: result.error, data: result.error, type: "stderr", sessionId });
+      }
     } catch (err) {
       const duration = Date.now() - startTime;
 

@@ -3,6 +3,7 @@ import executeCode, {
   SUPPORTED_LANGUAGES,
 } from "../services/executionEngine.js";
 import pool from "../config/db.js";
+import { recordMetric, MetricNames } from "../services/metricsCollector.js";
 
 export const execute = async (req, res) => {
   const { language, code } = req.body;
@@ -18,6 +19,11 @@ export const execute = async (req, res) => {
 
   try {
     const result = await executeCode(normalizedLanguage, code);
+    await recordMetric(result.status === "COMPLETED" ? MetricNames.EXECUTIONS : MetricNames.ERRORS);
+    await recordMetric(MetricNames.EXECUTION_TIME, result.executionTimeMs);
+    await recordMetric(MetricNames.TOTAL_REQUEST_TIME, result.executionTimeMs);
+    if (result.status === "TIMEOUT") await recordMetric(MetricNames.TIMEOUTS);
+    if (result.status === "RESOURCE_LIMIT") await recordMetric(MetricNames.RESOURCE_LIMITS);
     // Store execution history in DB
     await pool.query(
       `INSERT INTO executions 
@@ -27,12 +33,13 @@ export const execute = async (req, res) => {
         req.user.userId,
         normalizedLanguage,
         code,
-        "COMPLETED",
+        result.status,
         result.output,
         result.duration,
       ],
     );
-    res.json({ message: "Execution successful", result });
+    const message = result.status === "COMPLETED" ? "Execution successful" : "Execution finished";
+    res.status(result.status === "COMPLETED" ? 200 : 422).json({ message, result });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Execution failed", error: err.message });
