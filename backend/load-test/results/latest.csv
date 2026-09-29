@@ -1,0 +1,7 @@
+concurrentUsers,successfulExecutions,failedExecutions,timeoutCount,errorRate,averageResponseMs,averageExecutionMs,averageQueueMs,cpuUsage,memoryUsage
+2,2,0,0,0,598,377,154,,
+5,5,0,0,0,508,325,149,,
+10,10,0,0,0,720,326,347,,
+25,25,0,0,0,1391,336,967,,
+50,50,0,0,0,2513,351,1962,,
+100,100,0,0,0,4674,332,3958,,

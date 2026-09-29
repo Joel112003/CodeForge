@@ -73,7 +73,7 @@ export default function Dashboard() {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))' }}>
               <ActionCard
                 label="New Session"
-                desc="Spin up a fresh isolated room"
+                desc="Spin up a fresh collaborative room"
                 icon={<PlusIcon />}
                 accent
                 disabled={creating}

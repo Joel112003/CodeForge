@@ -1,0 +1,74 @@
+[
+  {
+    "concurrentUsers": 2,
+    "successfulExecutions": 2,
+    "failedExecutions": 0,
+    "timeoutCount": 0,
+    "errorRate": 0,
+    "averageResponseMs": 598,
+    "averageExecutionMs": 377,
+    "averageQueueMs": 154,
+    "cpuUsage": null,
+    "memoryUsage": null
+  },
+  {
+    "concurrentUsers": 5,
+    "successfulExecutions": 5,
+    "failedExecutions": 0,
+    "timeoutCount": 0,
+    "errorRate": 0,
+    "averageResponseMs": 508,
+    "averageExecutionMs": 325,
+    "averageQueueMs": 149,
+    "cpuUsage": null,
+    "memoryUsage": null
+  },
+  {
+    "concurrentUsers": 10,
+    "successfulExecutions": 10,
+    "failedExecutions": 0,
+    "timeoutCount": 0,
+    "errorRate": 0,
+    "averageResponseMs": 720,
+    "averageExecutionMs": 326,
+    "averageQueueMs": 347,
+    "cpuUsage": null,
+    "memoryUsage": null
+  },
+  {
+    "concurrentUsers": 25,
+    "successfulExecutions": 25,
+    "failedExecutions": 0,
+    "timeoutCount": 0,
+    "errorRate": 0,
+    "averageResponseMs": 1391,
+    "averageExecutionMs": 336,
+    "averageQueueMs": 967,
+    "cpuUsage": null,
+    "memoryUsage": null
+  },
+  {
+    "concurrentUsers": 50,
+    "successfulExecutions": 50,
+    "failedExecutions": 0,
+    "timeoutCount": 0,
+    "errorRate": 0,
+    "averageResponseMs": 2513,
+    "averageExecutionMs": 351,
+    "averageQueueMs": 1962,
+    "cpuUsage": null,
+    "memoryUsage": null
+  },
+  {
+    "concurrentUsers": 100,
+    "successfulExecutions": 100,
+    "failedExecutions": 0,
+    "timeoutCount": 0,
+    "errorRate": 0,
+    "averageResponseMs": 4674,
+    "averageExecutionMs": 332,
+    "averageQueueMs": 3958,
+    "cpuUsage": null,
+    "memoryUsage": null
+  }
+]

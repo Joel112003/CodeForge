@@ -22,6 +22,8 @@
 - [API Reference](#api-reference)
 - [WebSocket Events](#websocket-events)
 - [Database Schema](#database-schema)
+- [Testing](#testing)
+- [Results](#results)
 - [Security](#security)
 - [Design System](#design-system)
 - [Known Limitations](#known-limitations)
@@ -41,6 +43,18 @@ CodeForge is a SaaS-grade collaborative coding environment. Users can:
 ---
 
 ## Architecture
+
+```mermaid
+flowchart LR
+  Client[React client] -->|HTTP and Socket.IO| Express[Express and Socket.IO]
+  Express --> Queue[BullMQ]
+  Queue --> Redis[(Redis)]
+  Queue --> Worker[Worker]
+  Worker --> Child[Host child process]
+  Child -->|stdout and stderr chunks| Worker
+  Worker -->|streamed output| Express
+  Express --> Client
+```
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -408,12 +422,16 @@ Execution statuses are `QUEUED`, `RUNNING`, `COMPLETED`, `COMPILE_ERROR`,
 `RUNTIME_ERROR`, `TIMEOUT`, `OUTPUT_LIMIT`, `INVALID_LANGUAGE`, and
 `EXECUTION_ERROR`. Only exit code 0 produces `COMPLETED`.
 
-## Execution Tests and Load Testing
+## Testing
 
-Run the language and validation checks:
+Backend unit and integration tests use Jest, Supertest, and offline mocks for
+PostgreSQL, Redis, and email delivery. The original Node execution test remains
+available as a focused runtime check.
 
 ```bash
 cd backend
+npm test
+npm run test:coverage
 npm run test:execution
 ```
 
@@ -425,8 +443,23 @@ npm run load-test
 ```
 
 Results are written to `backend/load-test/results/latest.json` and
-`backend/load-test/results/latest.csv`. CPU and memory columns remain empty
-unless an external measurement source is added.
+`backend/load-test/results/latest.csv`.
+
+## Results
+
+Measured locally by `npm run load-test`; execution and end-to-end times are
+averages in milliseconds from `backend/load-test/results/latest.json`.
+
+| Concurrent clients | Successful executions | Average execution time | Average end-to-end time |
+|---:|---:|---:|---:|
+| 2 | 2 | 377 ms | 598 ms |
+| 5 | 5 | 325 ms | 508 ms |
+| 10 | 10 | 326 ms | 720 ms |
+| 25 | 25 | 336 ms | 1,391 ms |
+| 50 | 50 | 351 ms | 2,513 ms |
+| 100 | 100 | 332 ms | 4,674 ms |
+
+CPU and memory values were not collected by this load-test script.
 
 ---
 
