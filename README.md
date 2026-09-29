@@ -435,6 +435,8 @@ npm run test:coverage
 npm run test:execution
 ```
 
+- `test:execution` checks language aliases, invalid languages, JavaScript and Python runs, standard input, syntax errors, runtime errors, execution timeouts, and excessive output.
+
 The load test submits real Socket.IO `run_code` requests at 2, 5, 10, 25, 50,
 and 100 concurrent clients:
 
